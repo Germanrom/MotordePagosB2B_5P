@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+sqlalchemy
+python-dotenv
+mercadopago
+psycopg2-binary
+qrcode[pil]
