@@ -1,44 +1,40 @@
+import os
 import mercadopago
-from src.domain.interfaces import IProveedorDePagos
-from src.domain.models import OrdenDeCobro
+from dotenv import load_dotenv
 
-class MercadoPagoAdaptador(IProveedorDePagos):
-    def __init__(self, access_token: str):
-        self.sdk = mercadopago.SDK(access_token)
+# 1. Abrimos la caja fuerte
+load_dotenv()
 
-    async def asignar_orden_a_caja(self, orden: OrdenDeCobro) -> bool:
-        # 1. Armamos el paquete exacto como lo exige Mercado Pago
-        preference_data = {
-            "items": [
-                {
-                    "title": orden.concepto,
-                    "quantity": 1,
-                    "unit_price": orden.monto,
-                    "currency_id": "ARS" # O la moneda de tu país
-                }
-            ],
-            "external_reference": str(orden.id) # Unimos tu BD con la BD de Mercado Pago
-        }
-        
-        try:
-            # 2. 🚀 El momento de la verdad: disparamos el dato a los servidores de MP
-            print("⏳ Conectando con Mercado Pago...")
-            respuesta = self.sdk.preference().create(preference_data)
-            
-            # 3. Analizamos qué nos respondió Mercado Pago
-            if respuesta["status"] == 201:
-                # ¡Nos devolvieron un link de pago real!
-                link_de_pago = respuesta["response"]["init_point"]
-                print(f"✅ ¡ÉXITO TOTAL! Link de pago generado:")
-                print(f"🔗 {link_de_pago}")
-                return True
-            else:
-                print(f"❌ Error de MP: {respuesta}")
-                return False
-                
-        except Exception as e:
-            print(f"🚨 Error de conexión: {e}")
-            return False
-            
-    async def consultar_estado_pago(self, referencia_externa: str) -> str:
-        return "PENDIENTE"
+# 2. Inicializamos Mercado Pago con el token
+sdk = mercadopago.SDK(os.getenv("MP_ACCESS_TOKEN"))
+
+def generar_link_de_pago(monto: float, concepto: str) -> str:
+    """
+    Se conecta con Mercado Pago, crea la preferencia y devuelve el link de cobro real.
+    """
+    preference_data = {
+        "items": [
+            {
+                "title": concepto,
+                "quantity": 1,
+                "unit_price": float(monto)
+            }
+        ]
+    }
+
+    # Hacemos la petición a Mercado Pago
+    preference_response = sdk.preference().create(preference_data)
+    
+    # Extraemos el link de pago
+    link_de_pago = preference_response["response"]["init_point"]
+    
+    # Lo imprimimos en la terminal de Render (Logs) para control nuestro
+    print(f"✅ Link generado exitosamente: {link_de_pago}")
+    
+    # --- MAGIA DEL QR (Desactivada para producción en la nube) ---
+    # import qrcode
+    # imagen_qr = qrcode.make(link_de_pago)
+    # imagen_qr.show()
+
+    # 3. Devolvemos el link para que llegue al usuario en Swagger
+    return link_de_pago

@@ -1,35 +1,46 @@
-import os
-from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
+from sqlalchemy import Column, Integer, String, Float
 from sqlalchemy.orm import Session
-
-# Importamos todas nuestras piezas
 from src.infrastructure.database.db_config import engine, get_db, Base
-from src.infrastructure.database.repository import PostgresRepository
-from src.infrastructure.mercadopago.adaptador import MercadoPagoAdaptador
-from src.application.servicios import ServicioDePagos
+from src.infrastructure.mercadopago.adaptador import generar_link_de_pago
 
-# 1. ¡Abrimos la caja fuerte invisible (.env)!
-load_dotenv()
+# 1. Definimos la estructura de la tabla para Supabase
+class Orden(Base):
+    __tablename__ = "ordenes"
+    
+    # Podés agregarle más columnas en el futuro si lo necesitás
+    id = Column(Integer, primary_key=True, index=True)
+    concepto = Column(String, index=True)
+    monto = Column(Float)
+    punto_de_cobro = Column(String)
 
-# 2. Preparamos la base de datos
+# 2. Le decimos a SQLAlchemy que cree la tabla en la nube si no existe
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Motor de Pagos con Mercado Pago")
+# 3. Inicializamos la aplicación FastAPI
+app = FastAPI(title="Motor de Pagos API", version="1.0.0")
 
 @app.post("/ordenes")
-async def crear_nueva_orden(monto: float, concepto: str, punto_de_cobro: str, db: Session = Depends(get_db)):
-    # 3. Armamos las piezas
-    repo = PostgresRepository(db)
+def crear_orden(monto: float, concepto: str, punto_de_cobro: str, db: Session = Depends(get_db)):
     
-    # 4. Buscamos el token en la caja fuerte y creamos el adaptador de Mercado Pago
-    token = os.getenv("MP_ACCESS_TOKEN")
-    proveedor_mp = MercadoPagoAdaptador(token)
+    # PASO A: Generamos el link de pago real comunicándonos con Mercado Pago
+    link = generar_link_de_pago(monto=monto, concepto=concepto)
     
-    # 5. Le pasamos ambas herramientas a nuestro Director
-    servicio = ServicioDePagos(repo, proveedor_mp)
-    
-    # 6. Ejecutamos la acción
-    orden = await servicio.crear_orden(monto, concepto, punto_de_cobro)
-    
-    return {"mensaje": "¡Orden guardada y enviada a Mercado Pago!", "orden": orden}
+    # PASO B: Guardamos la orden en nuestra base de datos en Supabase
+    nueva_orden = Orden(monto=monto, concepto=concepto, punto_de_cobro=punto_de_cobro)
+    db.add(nueva_orden)
+    db.commit()
+    db.refresh(nueva_orden) # Refrescamos para obtener el ID que le asignó Supabase
+
+    # PASO C: Devolvemos la respuesta final al usuario (Swagger/Frontend)
+    return {
+        "status": "success",
+        "mensaje": "✅ ¡ÉXITO TOTAL! Orden guardada en la nube.",
+        "detalle": {
+            "id": nueva_orden.id,
+            "concepto": nueva_orden.concepto,
+            "monto": nueva_orden.monto,
+            "punto_de_cobro": nueva_orden.punto_de_cobro
+        },
+        "link_de_pago": link
+    }
