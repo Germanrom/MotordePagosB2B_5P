@@ -1,15 +1,18 @@
 import os
-import requests # <-- Importante
+import requests
 from fastapi import FastAPI, Depends
 from sqlalchemy import Column, Integer, String, Float
 from sqlalchemy.orm import Session
+
+# Importaciones de tu infraestructura
 from src.infrastructure.database.db_config import engine, get_db, Base
 from src.infrastructure.mercadopago.adaptador import generar_link_de_pago
 
-# 3. Inicializamos la aplicación FastAPI
+# 1. INICIALIZAMOS FASTAPI (UNA SOLA VEZ)
 app = FastAPI(title="Motor de Pagos API", version="1.0.0")
 
-# --- 1. NUEVA TABLA: VENDEDORES ---
+# --- 2. DEFINICIÓN DE TABLAS EN BASE DE DATOS ---
+
 class Vendedor(Base):
     __tablename__ = "vendedores"
     
@@ -18,9 +21,21 @@ class Vendedor(Base):
     mp_access_token = Column(String)  
     mp_refresh_token = Column(String) 
 
+class Orden(Base):
+    __tablename__ = "ordenes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    monto = Column(Float)
+    moneda = Column(String, default="ARS")
+    concepto = Column(String, index=True)
+    estado = Column(String, default="PENDIENTE")
+    punto_de_cobro_id = Column(String)
+
+# Sincronizamos con Supabase (Crea las tablas si no existen)
 Base.metadata.create_all(bind=engine)
 
-# --- 2. LA RUTA RECEPTORA (OAUTH) ---
+# --- 3. RUTAS DE TU APLICACIÓN ---
+
 @app.get("/callback")
 def mercadopago_callback(code: str, db: Session = Depends(get_db)):
     url = "https://api.mercadopago.com/oauth/token"
@@ -29,7 +44,6 @@ def mercadopago_callback(code: str, db: Session = Depends(get_db)):
         "client_id": os.getenv("MP_CLIENT_ID"),
         "grant_type": "authorization_code",
         "code": code,
-        # 👇 Esta URL DEBE coincidir con la que pusiste en Mercado Pago
         "redirect_uri": "https://motor-de-pagos-api.onrender.com/callback" 
     }
     
@@ -53,26 +67,8 @@ def mercadopago_callback(code: str, db: Session = Depends(get_db)):
         "vendedor_id_interno": nuevo_vendedor.id
     }
 
-# 1. Definimos la estructura EXACTA de tu tabla en Supabase
-class Orden(Base):
-    __tablename__ = "ordenes"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    monto = Column(Float)
-    moneda = Column(String, default="ARS")       # Por defecto será Pesos Argentinos
-    concepto = Column(String, index=True)
-    estado = Column(String, default="PENDIENTE") # Nace pendiente hasta que paguen
-    punto_de_cobro_id = Column(String)           # Usamos String por si tiene letras (ej: "SUC-01")
-
-# 2. Le decimos a SQLAlchemy que sincronice con la DB
-Base.metadata.create_all(bind=engine)
-
-# 3. Inicializamos la aplicación FastAPI
-app = FastAPI(title="Motor de Pagos API", version="1.0.0")
-
 @app.post("/ordenes")
 def crear_orden(monto: float, concepto: str, punto_de_cobro_id: str, moneda: str = "ARS", db: Session = Depends(get_db)):
-    
     # PASO A: Generamos el link de pago real comunicándonos con Mercado Pago
     link = generar_link_de_pago(monto=monto, concepto=concepto)
     
@@ -82,7 +78,7 @@ def crear_orden(monto: float, concepto: str, punto_de_cobro_id: str, moneda: str
         concepto=concepto, 
         punto_de_cobro_id=punto_de_cobro_id,
         moneda=moneda,
-        estado="PENDIENTE" # Se crea esperando el pago
+        estado="PENDIENTE" 
     )
     db.add(nueva_orden)
     db.commit()
