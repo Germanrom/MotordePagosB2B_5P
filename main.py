@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 from src.infrastructure.database.db_config import engine, get_db, Base
 from src.infrastructure.mercadopago.adaptador import generar_link_de_pago
 
+# 3. Inicializamos la aplicación FastAPI
+app = FastAPI(title="Motor de Pagos API", version="1.0.0")
+
 # --- 1. NUEVA TABLA: VENDEDORES ---
 class Vendedor(Base):
     __tablename__ = "vendedores"
