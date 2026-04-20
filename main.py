@@ -1,6 +1,6 @@
 import os
 import requests
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from sqlalchemy import Column, Integer, String, Float
 from sqlalchemy.orm import Session
 
