@@ -1,6 +1,6 @@
 import os
 import requests
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import Column, Integer, String, Float
 from sqlalchemy.orm import Session
 
@@ -68,15 +68,27 @@ def mercadopago_callback(code: str, db: Session = Depends(get_db)):
     }
 
 @app.post("/ordenes")
-def crear_orden(monto: float, concepto: str, punto_de_cobro_id: str, moneda: str = "ARS", db: Session = Depends(get_db)):
-    # PASO A: Generamos el link de pago real comunicándonos con Mercado Pago
-    link = generar_link_de_pago(monto=monto, concepto=concepto)
+def crear_orden(monto: float, concepto: str, vendedor_id: int, moneda: str = "ARS", db: Session = Depends(get_db)):
     
-    # PASO B: Guardamos la orden en nuestra base de datos en Supabase con tus campos exactos
+    # 1. Buscamos al vendedor en la base de datos
+    vendedor = db.query(Vendedor).filter(Vendedor.id == vendedor_id).first()
+    
+    if not vendedor:
+        # Si alguien pone un ID que no existe, frenamos todo
+        raise HTTPException(status_code=404, detail="Vendedor no encontrado en la base de datos")
+
+    # 2. Generamos el link de pago pasándole el token secreto de ESE vendedor
+    link = generar_link_de_pago(
+        monto=monto, 
+        concepto=concepto, 
+        access_token=vendedor.mp_access_token 
+    )
+    
+    # 3. Guardamos la orden asociándola a este vendedor
     nueva_orden = Orden(
         monto=monto, 
         concepto=concepto, 
-        punto_de_cobro_id=punto_de_cobro_id,
+        punto_de_cobro_id=str(vendedor_id),
         moneda=moneda,
         estado="PENDIENTE" 
     )
@@ -84,17 +96,14 @@ def crear_orden(monto: float, concepto: str, punto_de_cobro_id: str, moneda: str
     db.commit()
     db.refresh(nueva_orden) 
 
-    # PASO C: Devolvemos la respuesta final al usuario con todos tus datos
+    # 4. Devolvemos el link automático y listo para usar
     return {
         "status": "success",
-        "mensaje": "✅ ¡ÉXITO TOTAL! Orden guardada en la nube.",
+        "mensaje": f"✅ ¡ÉXITO! Link generado automáticamente a nombre del Vendedor {vendedor_id}",
+        "link_de_pago": link,
         "detalle": {
-            "id": nueva_orden.id,
+            "orden_id": nueva_orden.id,
             "concepto": nueva_orden.concepto,
-            "monto": nueva_orden.monto,
-            "moneda": nueva_orden.moneda,
-            "estado": nueva_orden.estado,
-            "punto_de_cobro_id": nueva_orden.punto_de_cobro_id
-        },
-        "link_de_pago": link
+            "monto": nueva_orden.monto
+        }
     }

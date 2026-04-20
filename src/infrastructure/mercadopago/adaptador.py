@@ -1,17 +1,16 @@
-import os
 import mercadopago
-from dotenv import load_dotenv
 
-# 1. Abrimos la caja fuerte
-load_dotenv()
+# Nota: Ya no necesitamos os ni load_dotenv acá porque el token 
+# ahora viene directo desde la base de datos a través de la función.
 
-# 2. Inicializamos Mercado Pago con el token
-sdk = mercadopago.SDK(os.getenv("MP_ACCESS_TOKEN"))
-
-def generar_link_de_pago(monto: float, concepto: str) -> str:
+def generar_link_de_pago(monto: float, concepto: str, access_token: str) -> str:
     """
     Se conecta con Mercado Pago, crea la preferencia y devuelve el link de cobro real.
+    Ahora es Multi-Tenant: usa el access_token del vendedor correspondiente.
     """
+    # 1. Inicializamos Mercado Pago ADENTRO de la función con el token del cliente
+    sdk = mercadopago.SDK(access_token)
+    
     preference_data = {
         "items": [
             {
@@ -22,13 +21,13 @@ def generar_link_de_pago(monto: float, concepto: str) -> str:
         ]
     }
 
-    # Hacemos la petición a Mercado Pago
+    # 2. Hacemos la petición a Mercado Pago
     preference_response = sdk.preference().create(preference_data)
     
-    # Extraemos el link de pago
+    # 3. Extraemos el link de pago
     link_de_pago = preference_response["response"]["init_point"]
     
-    # Lo imprimimos en la terminal de Render (Logs) para control nuestro
+    # 4. Lo imprimimos en la terminal de Render (Logs) para control nuestro
     print(f"✅ Link generado exitosamente: {link_de_pago}")
     
     # --- MAGIA DEL QR (Desactivada para producción en la nube) ---
@@ -36,5 +35,5 @@ def generar_link_de_pago(monto: float, concepto: str) -> str:
     # imagen_qr = qrcode.make(link_de_pago)
     # imagen_qr.show()
 
-    # 3. Devolvemos el link para que llegue al usuario en Swagger
+    # 5. Devolvemos el link para que llegue a main.py
     return link_de_pago
