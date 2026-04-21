@@ -43,7 +43,7 @@ def vincular_vendedor_ctrl(code: str, db: Session):
 
 import mercadopago
 
-def crear_orden_pago_ctrl(monto, concepto, vendedor_id, db):
+def crear_orden_ctrl(monto, concepto, vendedor_id, db):
     # 1. BUSCAMOS AL VENDEDOR PARA USAR SU TOKEN DE MERCADO PAGO
     # (Asumiendo que tenés una tabla Vendedor con el campo mp_access_token)
     from models import Vendedor, Orden # Asegurate de importar tus modelos
