@@ -1,10 +1,24 @@
+import sys
 import os
+
+# Agregamos la raíz del proyecto al camino de búsqueda de Python
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import mercadopago
 import requests
-from fastapi import HTTPException
+
+# Ahora lo importamos de forma que no haya duda
+try:
+    from models.modelos import Vendedor, Orden
+except ImportError:
+    # Si falla el anterior, probamos el camino alternativo que a veces toma Render
+    from models import Vendedor, Orden
+    from fastapi import HTTPException
 from sqlalchemy.orm import Session
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
 
 # Importamos tus modelos recién mudados
 from models.modelos import Vendedor, Orden
