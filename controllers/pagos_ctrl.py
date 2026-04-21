@@ -2,6 +2,9 @@ import os
 import requests
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Importamos tus modelos recién mudados
 from models.modelos import Vendedor, Orden
@@ -76,3 +79,46 @@ def procesar_pago_webhook_ctrl(body: dict, vendedor_id: int, db: Session):
                     print(f"🎉 ¡DINERO RECIBIDO! Orden {orden.id} cobrada exitosamente.")
                     
     return {"status": "ok"}
+
+def enviar_email_ctrl(email_destino: str, concepto: str, monto: float, link_pago: str):
+    remitente = os.getenv("SMTP_EMAIL")
+    password = os.getenv("SMTP_PASSWORD")
+    
+    if not remitente or not password:
+        return {"status": "error", "mensaje": "Credenciales de correo no configuradas en el servidor"}
+
+    # 1. Armamos la estructura del correo
+    msg = MIMEMultipart()
+    msg['From'] = remitente
+    msg['To'] = email_destino
+    msg['Subject'] = f"Link de Pago seguro - {concepto}"
+
+    # 2. Diseñamos el cuerpo del mensaje (HTML básico para que se vea lindo)
+    cuerpo_html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
+        <h2 style="color: #009EE3;">Hola! 👋</h2>
+        <p>Acá tenés el link de pago seguro solicitado para tu compra de <strong>{concepto}</strong>.</p>
+        <p style="font-size: 18px;">Total a pagar: <strong>${monto}</strong></p>
+        <br>
+        <a href="{link_pago}" style="background-color: #009EE3; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+          Pagar con Mercado Pago
+        </a>
+        <br><br>
+        <p style="font-size: 12px; color: #888;">Este es un mensaje automático generado por el Motor de Pagos.</p>
+      </body>
+    </html>
+    """
+    msg.attach(MIMEText(cuerpo_html, 'html'))
+
+    # 3. Nos conectamos a Gmail y despachamos
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls() # Encriptamos la conexión
+        server.login(remitente, password)
+        server.send_message(msg)
+        server.quit()
+        return {"status": "success", "mensaje": "Email enviado con éxito al cliente"}
+    except Exception as e:
+        print(f"Error enviando correo: {e}")
+        return {"status": "error", "mensaje": "Falló el envío del correo"}

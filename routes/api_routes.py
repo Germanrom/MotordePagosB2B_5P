@@ -1,10 +1,11 @@
 import os
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Request, HTTPException, Security
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.orm import Session
 
 from src.infrastructure.database.db_config import get_db
-from controllers.pagos_ctrl import vincular_vendedor_ctrl, crear_orden_ctrl, procesar_pago_webhook_ctrl
+from controllers.pagos_ctrl import vincular_vendedor_ctrl, crear_orden_ctrl, procesar_pago_webhook_ctrl, enviar_email_ctrl
 
 router = APIRouter()
 
@@ -37,3 +38,20 @@ def crear_orden(monto: float, concepto: str, vendedor_id: int, moneda: str = "AR
 async def recibir_webhook(request: Request, vendedor_id: int, db: Session = Depends(get_db)):
     body = await request.json()
     return procesar_pago_webhook_ctrl(body, vendedor_id, db)
+
+# Molde de datos que esperamos recibir del Frontend
+class DatosEmail(BaseModel):
+    email_destino: str
+    concepto: str
+    monto: float
+    link_pago: str
+
+# Ruta protegida con tu API Key
+@router.post("/enviar-email", dependencies=[Depends(verificar_api_key)])
+def enviar_email_ruta(datos: DatosEmail):
+    return enviar_email_ctrl(
+        email_destino=datos.email_destino,
+        concepto=datos.concepto,
+        monto=datos.monto,
+        link_pago=datos.link_pago
+    )
