@@ -8,20 +8,14 @@ import mercadopago
 import requests
 
 # Ahora lo importamos de forma que no haya duda
-try:
+
     from src.infrastructure.database.models import Vendedor, Orden
-except ImportError:
-    # Si falla el anterior, probamos el camino alternativo que a veces toma Render
-    from models import Vendedor, Orden
     from fastapi import HTTPException
 from sqlalchemy.orm import Session
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-
-# Importamos tus modelos recién mudados
-from models import Vendedor, Orden
 # Importamos tu adaptador de MP que ya funcionaba
 from src.infrastructure.mercadopago.adaptador import generar_link_de_pago
 
