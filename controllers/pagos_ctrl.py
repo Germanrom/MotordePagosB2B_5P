@@ -21,7 +21,7 @@ from email.mime.multipart import MIMEMultipart
 
 
 # Importamos tus modelos recién mudados
-from database.models import Vendedor, Orden
+from models import Vendedor, Orden
 # Importamos tu adaptador de MP que ya funcionaba
 from src.infrastructure.mercadopago.adaptador import generar_link_de_pago
 
