@@ -43,45 +43,39 @@ def vincular_vendedor_ctrl(code: str, db: Session):
 
 import mercadopago
 
-def crear_orden_ctrl(monto, concepto, vendedor_id, db):
-    # 1. BUSCAMOS AL VENDEDOR PARA USAR SU TOKEN DE MERCADO PAGO
-    # (Asumiendo que tenés una tabla Vendedor con el campo mp_access_token)
-    from models import Vendedor, Orden # Asegurate de importar tus modelos
+def crear_orden_ctrl(monto, concepto, vendedor_id, moneda, db): # <-- Agregamos 'moneda' aquí
+    from models import Vendedor, Orden 
+    
     vendedor = db.query(Vendedor).filter(Vendedor.id == vendedor_id).first()
     
     if not vendedor:
-        raise Exception("Vendedor no encontrado")
+        raise Exception("Vendedor no encontrado en la base de datos")
 
-    # 2. CREAMOS LA ORDEN EN NUESTRA BASE DE DATOS (Estado inicial: PENDIENTE)
+    # Guardamos la orden incluyendo la moneda que viene de la ruta
     nueva_orden = Orden(
         monto=monto,
         concepto=concepto,
         vendedor_id=vendedor_id,
+        moneda=moneda, # <-- Ahora sí usamos el parámetro
         estado="PENDIENTE" 
     )
     db.add(nueva_orden)
     db.commit()
-    db.refresh(nueva_orden) # Aquí obtenemos el ID real generado por la DB
+    db.refresh(nueva_orden)
 
-    # 3. CONFIGURAMOS MERCADO PAGO CON EL TOKEN DEL VENDEDOR
     sdk = mercadopago.SDK(vendedor.mp_access_token)
 
-    # 4. CREAMOS LA PREFERENCIA DE PAGO
     preference_data = {
         "items": [
             {
                 "title": concepto,
                 "quantity": 1,
                 "unit_price": float(monto),
-                "currency_id": "ARS"
+                "currency_id": moneda # Usamos la moneda que llegó (ARS, etc)
             }
         ],
-        # EL PASO MAESTRO: Guardamos nuestro ID de base de datos aquí
         "external_reference": str(nueva_orden.id),
-        
-        # Configuramos a dónde debe avisar Mercado Pago cuando se pague
         "notification_url": f"https://motor-de-pagos-api.onrender.com/webhook?vendedor_id={vendedor_id}",
-        
         "back_urls": {
             "success": "https://tu-sitio-o-agradecimiento.com",
             "failure": "https://tu-sitio-o-error.com",
@@ -91,15 +85,11 @@ def crear_orden_ctrl(monto, concepto, vendedor_id, db):
 
     respuesta_mp = sdk.preference().create(preference_data)
     
-    # Verificamos que Mercado Pago haya respondido bien
     if "response" not in respuesta_mp:
-        print("Error de Mercado Pago:", respuesta_mp)
         raise Exception("Error al crear la preferencia en Mercado Pago")
 
     link_pago = respuesta_mp["response"]["init_point"]
 
-    # 5. RETORNAMOS AMBOS DATOS AL FRONTEND
-    # Esto es lo que Next.js necesita para encender el radar
     return {
         "link_de_pago": link_pago,
         "id_orden": nueva_orden.id
