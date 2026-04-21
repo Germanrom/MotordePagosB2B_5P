@@ -55,3 +55,14 @@ def enviar_email_ruta(datos: DatosEmail):
         monto=datos.monto,
         link_pago=datos.link_pago
     )
+    
+@router.get("/ordenes/{id_orden}/estado", dependencies=[Depends(verificar_api_key)])
+def consultar_estado_orden(id_orden: int, db: Session = Depends(get_db)):
+    # Acá buscás la orden en tu base de datos
+    orden = db.query(Orden).filter(Orden.id == id_orden).first()
+
+    if not orden:
+        return {"estado": "error", "mensaje": "Orden no encontrada"}
+
+    # Suponiendo que tenés un campo "estado" que el webhook actualiza a 'pagado'
+    return {"estado": orden.estado}
