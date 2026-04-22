@@ -1,9 +1,9 @@
 import os
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, Request, HTTPException, Security
+from fastapi import APIRouter, Depends, Request, HTTPException, Security, Header
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.orm import Session
-
+from typing import Optional
 from src.infrastructure.database.db_config import get_db
 from controllers.pagos_ctrl import vincular_vendedor_ctrl, crear_orden_ctrl, procesar_pago_webhook_ctrl, enviar_email_ctrl
 from src.infrastructure.database.models import Orden, Vendedor
@@ -35,10 +35,23 @@ def crear_orden(monto: float, concepto: str, vendedor_id: int, moneda: str = "AR
     return crear_orden_ctrl(monto, concepto, vendedor_id, moneda, db)
 
 # PÚBLICA (Pero validada por MP): Mercado Pago nos avisa por acá cuando alguien paga
+#@router.post("/webhook")
+#async def recibir_webhook(request: Request, vendedor_id: int, db: Session = Depends(get_db)):
+#    body = await request.json()
+#    return procesar_pago_webhook_ctrl(body, vendedor_id, db)
 @router.post("/webhook")
-async def recibir_webhook(request: Request, vendedor_id: int, db: Session = Depends(get_db)):
+async def recibir_webhook(
+    request: Request, 
+    vendedor_id: int, 
+    x_signature: Optional[str] = Header(None), # Atrapamos la firma
+    x_request_id: Optional[str] = Header(None), # Atrapamos el ID de la petición
+    db: Session = Depends(get_db) # (O como se llame tu función de base de datos)
+):
     body = await request.json()
-    return procesar_pago_webhook_ctrl(body, vendedor_id, db)
+    
+    # Le pasamos los datos, más las llaves de seguridad al controlador
+    return procesar_pago_webhook_ctrl(body, vendedor_id, x_signature, x_request_id, db)
+
 
 # Molde de datos que esperamos recibir del Frontend
 class DatosEmail(BaseModel):

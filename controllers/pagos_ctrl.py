@@ -3,6 +3,8 @@ import os
 import requests
 import smtplib
 import mercadopago
+import hmac
+import hashlib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from fastapi import HTTPException
@@ -44,6 +46,35 @@ def vincular_vendedor_ctrl(code: str, db: Session):
         "mensaje": "✅ ¡Cuenta vinculada!",
         "vendedor_id_interno": nuevo_vendedor.id
     }
+
+def validar_firma_mp(x_signature: str, x_request_id: str, data_id: str) -> bool:
+    # Este secreto te lo da Mercado Pago en el panel de Webhooks
+    secret = os.getenv("MP_WEBHOOK_SECRET") 
+    
+    if not secret or not x_signature or not x_request_id:
+        return False # Si falta la firma o nuestra clave, bloqueamos por las dudas
+
+    try:
+        # La firma viene así: ts=123456,v1=abcdef... Separamos las partes:
+        partes = dict(item.split('=') for item in x_signature.split(','))
+        ts = partes.get("ts")
+        v1 = partes.get("v1")
+
+        if not ts or not v1:
+            return False
+
+        # Armamos la "receta" exacta que usó Mercado Pago
+        manifest = f"id:{data_id};request-id:{x_request_id};ts:{ts};"
+        
+        # Encriptamos la receta con nuestra llave secreta
+        hmac_obj = hmac.new(secret.encode(), manifest.encode(), hashlib.sha256)
+        firma_calculada = hmac_obj.hexdigest()
+
+        # Si nuestra firma matemática es igual a la que mandaron, es 100% auténtico
+        return hmac.compare_digest(firma_calculada, v1)
+    except Exception as e:
+        print(f"Error de seguridad validando firma: {e}")
+        return False
 
 def crear_orden_ctrl(monto, concepto, vendedor_id, moneda, db: Session):
     vendedor = db.query(Vendedor).filter(Vendedor.id == vendedor_id).first()
@@ -95,10 +126,17 @@ def crear_orden_ctrl(monto, concepto, vendedor_id, moneda, db: Session):
         "id_orden": nueva_orden.id
     }
 
-def procesar_pago_webhook_ctrl(body: dict, vendedor_id: int, db: Session):
+def procesar_pago_webhook_ctrl(body: dict, vendedor_id: int, x_signature: str, x_request_id: str, db: Session):
     if body.get("action") == "payment.created" or body.get("type") == "payment":
         payment_id = body.get("data", {}).get("id")
 
+        # 🛡️ EL PATOVICA: Revisamos la firma antes de hacer cualquier otra cosa
+        if not validar_firma_mp(x_signature, x_request_id, str(payment_id)):
+            print(f"🚨 ALERTA: Webhook falso o sin firma detectado. Bloqueando.")
+            # Si no es Mercado Pago, disparamos un error 403 (Prohibido)
+            raise HTTPException(status_code=403, detail="Firma de seguridad inválida")
+
+        # Si pasamos el escudo, el código sigue su curso normal (El Cajero)
         vendedor = db.query(Vendedor).filter(Vendedor.id == vendedor_id).first()
         if vendedor and payment_id:
             url = f"https://api.mercadopago.com/v1/payments/{payment_id}"
@@ -111,7 +149,7 @@ def procesar_pago_webhook_ctrl(body: dict, vendedor_id: int, db: Session):
                 if orden and orden.estado == "PENDIENTE":
                     orden.estado = "PAGADA"
                     db.commit()
-                    print(f"🎉 ¡DINERO RECIBIDO! Orden {orden.id} cobrada exitosamente.")
+                    print(f"🎉 ¡DINERO RECIBIDO Y VERIFICADO! Orden {orden.id} cobrada.")
 
     return {"status": "ok"}
 
