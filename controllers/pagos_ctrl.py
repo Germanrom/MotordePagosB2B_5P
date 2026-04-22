@@ -51,11 +51,11 @@ def crear_orden_ctrl(monto, concepto, vendedor_id, moneda, db: Session):
     if not vendedor:
         raise Exception("Vendedor no encontrado en la base de datos")
 
-    # Guardamos la orden incluyendo la moneda que viene de la ruta
+    # Guardamos la orden usando punto_de_cobro_id como manda el modelo
     nueva_orden = Orden(
         monto=monto,
         concepto=concepto,
-        vendedor_id=vendedor_id,
+        punto_de_cobro_id=str(vendedor_id), # <--- EL FIX ESTÁ ACÁ
         moneda=moneda,
         estado="PENDIENTE" 
     )
