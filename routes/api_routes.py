@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from src.infrastructure.database.db_config import get_db
 from controllers.pagos_ctrl import vincular_vendedor_ctrl, crear_orden_ctrl, procesar_pago_webhook_ctrl, enviar_email_ctrl
+from src.infrastructure.database.models import Orden, Vendedor
 
 router = APIRouter()
 
