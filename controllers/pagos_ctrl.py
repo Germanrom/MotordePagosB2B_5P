@@ -130,13 +130,11 @@ def procesar_pago_webhook_ctrl(body: dict, vendedor_id: int, x_signature: str, x
     if body.get("action") == "payment.created" or body.get("type") == "payment":
         payment_id = body.get("data", {}).get("id")
 
-        # 🛡️ EL PATOVICA: Revisamos la firma antes de hacer cualquier otra cosa
+        # 🛡️ EL PATOVICA (Seguridad Pilar 1)
         if not validar_firma_mp(x_signature, x_request_id, str(payment_id)):
             print(f"🚨 ALERTA: Webhook falso o sin firma detectado. Bloqueando.")
-            # Si no es Mercado Pago, disparamos un error 403 (Prohibido)
             raise HTTPException(status_code=403, detail="Firma de seguridad inválida")
 
-        # Si pasamos el escudo, el código sigue su curso normal (El Cajero)
         vendedor = db.query(Vendedor).filter(Vendedor.id == vendedor_id).first()
         if vendedor and payment_id:
             url = f"https://api.mercadopago.com/v1/payments/{payment_id}"
@@ -146,10 +144,33 @@ def procesar_pago_webhook_ctrl(body: dict, vendedor_id: int, x_signature: str, x
             if respuesta_mp.get("status") == "approved":
                 orden_id = int(respuesta_mp.get("external_reference"))
                 orden = db.query(Orden).filter(Orden.id == orden_id).first()
+                
+                # Si la orden existe y todavía figuraba como PENDIENTE
                 if orden and orden.estado == "PENDIENTE":
+                    # 1. Actualizamos la Base de Datos
                     orden.estado = "PAGADA"
                     db.commit()
                     print(f"🎉 ¡DINERO RECIBIDO Y VERIFICADO! Orden {orden.id} cobrada.")
+                    
+                    # 2. 📧 LA ENTREGA DEL VALOR (Pilar 2)
+                    # Extraemos el email que usó el comprador en Mercado Pago
+                    email_comprador = respuesta_mp.get("payer", {}).get("email")
+                    
+                    if email_comprador:
+                        # Acá definís qué le entregás (un link a un PDF, un video, etc.)
+                        # Como ejemplo, le mandamos a una página de "gracias" con su ID
+                        link_del_producto = f"https://tu-sitio.com/descargas/{orden.id}"
+                        
+                        # Disparamos tu función de envío de correos
+                        resultado_email = enviar_email_ctrl(
+                            email_destino=email_comprador, 
+                            concepto=orden.concepto, 
+                            monto=orden.monto, 
+                            link_pago=link_del_producto
+                        )
+                        print(f"Resultado del envío de email: {resultado_email}")
+                    else:
+                        print("⚠️ No se pudo obtener el email del comprador desde Mercado Pago.")
 
     return {"status": "ok"}
 
