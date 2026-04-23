@@ -53,13 +53,13 @@ export const handleWebhook = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Falta el ID de pago' });
       }
 
-      /*
+      
       // 1. Validar la firma de seguridad de Mercado Pago
       if (!validateMpSignature(xSignature, xRequestId, String(paymentId))) {
         console.error('ALERTA: Webhook falso o sin firma detectado.');
         return res.status(403).json({ error: 'Firma de seguridad inválida' });
       }
-        */
+        
 
       // 2. Buscar el vendor
       const vendor = await prisma.vendor.findUnique({

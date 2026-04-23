@@ -50,8 +50,8 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
 
     // 👇 ACÁ VA TU MAGIA DE NGROK
     // Reemplazá esta URL por la que te dio tu terminal al correr "npx ngrok http 8000"
-    const urlNgrok = "https://starry-provided-likeness.ngrok-free.dev"; 
-    
+    //const urlNgrok = "https://starry-provided-likeness.ngrok-free.dev"; 
+    const urlNgrok = "https://motor-de-pagos.onrender.com"; //URL DE PRODUCCION
     const notificationUrl = `${urlNgrok}/webhook?vendedor_id=${vendor.id}`;
 
     const prefResponse = await preference.create({
