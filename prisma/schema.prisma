@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Client {
+  id             String   @id @default(uuid())
+  client_id      String   @unique // Ej. "ENUAR"
+  api_key        String   // Hash o string plano según se prefiera para X-API-Key
+  callback_url   String   // A donde mandar el webhook de vinculación exitosa
+  redirect_uri   String   // A donde redirigir al usuario tras la vinculación
+  webhook_secret String   // Secreto HMAC para firmar webhooks al cliente
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  vendors        Vendor[]
+  orders         Order[]
+}
+
+model Vendor {
+  id               Int      @id @default(autoincrement())
+  mp_access_token  String
+  mp_refresh_token String?
+  mp_email         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  client_id        String
+  client           Client   @relation(fields: [client_id], references: [id])
+  
+  orders           Order[]
+}
+
+model Order {
+  id             String   @id @default(uuid())
+  external_id    String   // ID del carrito en el sistema del cliente
+  monto          Float
+  moneda         String   @default("ARS")
+  concepto       String
+  estado         String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
+  mp_payment_id  String?  // ID del pago en Mercado Pago una vez aprobado
+  checkout_url   String?  // URL para redirigir al usuario a pagar
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  vendor_id      Int
+  vendor         Vendor   @relation(fields: [vendor_id], references: [id])
+  
+  client_id      String
+  client         Client   @relation(fields: [client_id], references: [id])
+}
