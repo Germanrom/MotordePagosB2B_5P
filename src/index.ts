@@ -9,7 +9,7 @@ import webhookRoutes from './routes/webhook.routes';
 dotenv.config();
 
 const app = express();
-app.use('auth',authRoutes);
+app.use('/auth',authRoutes);
 // 🪄 EL TRADUCTOR: Le enseña a Express a leer los JSON del Body
 app.use(express.json());
 // La puerta de entrada (Prueba de vida)
