@@ -22,9 +22,10 @@ export const getMpUrl = async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Falta configurar MP_CLIENT_ID en el motor' });
     }
 
-    // Construimos la URL OAuth de MP.
-    // Usamos el 'state' para pasar el client_id y saber de quién es el callback luego.
-    const redirectUri = 'https://motor-de-pagos-api.onrender.com/auth/callback'; // O la URL de tu motor
+    // Construimos la URL OAuth de MP de forma dinámica
+    const baseUrl = process.env.APP_BASE_URL || 'http://localhost:8000';
+    const redirectUri = `${baseUrl}/auth/callback`;
+    
     const authUrl = `https://auth.mercadopago.com/authorization?client_id=${MP_CLIENT_ID}&response_type=code&platform_id=mp&state=${client.client_id}&redirect_uri=${redirectUri}`;
 
     res.json({ auth_url: authUrl });
@@ -54,7 +55,10 @@ export const mpCallback = async (req: Request, res: Response) => {
 
     // 1. Intercambiar code por tokens con MP
     const url = 'https://api.mercadopago.com/oauth/token';
-    const redirectUri = 'https://motor-de-pagos-api.onrender.com/auth/callback'; // Debe coincidir con la de getMpUrl
+    
+    // Usamos la misma URL dinámica para el callback
+    const baseUrl = process.env.APP_BASE_URL || 'http://localhost:8000';
+    const redirectUri = `${baseUrl}/auth/callback`;
     
     const mpData: Record<string, string> = {
       client_secret: process.env.MP_CLIENT_SECRET || '',
