@@ -84,7 +84,7 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
     // 7. Retornar la respuesta al cliente
     return res.status(200).json({
       id_orden: newOrder.id,
-      checkout_url: prefResponse.sandbox_init_point,
+      checkout_url: prefResponse.init_point,
       estado: newOrder.estado,
       created_at: newOrder.createdAt,
     });
