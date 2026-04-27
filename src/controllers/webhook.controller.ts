@@ -79,7 +79,7 @@ const validateMpSignature = (xSignature: string, xRequestId: string, dataId: str
   }
 };
 
-export const handleWebhook = async (req: Request, res: Response) => {
+/*export const handleWebhook = async (req: Request, res: Response) => {
   try {
     const { vendedor_id } = req.query;
     const xSignature = req.headers['x-signature'] as string;
@@ -177,5 +177,76 @@ export const handleWebhook = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error procesando webhook:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};*/
+
+export const handleWebhook = async (req: Request, res: Response) => {
+  try {
+    const { vendedor_id } = req.query;
+    const body = req.body;
+
+    console.log("--- WEBHOOK RECIBIDO ---");
+    console.log("Vendedor ID:", vendedor_id);
+    console.log("Cuerpo:", JSON.stringify(body));
+
+    // 1. Verificamos si es un pago (MP envía 'payment' o 'action')
+    const isPayment = body.type === 'payment' || body.action?.startsWith('payment.');
+    
+    if (isPayment) {
+      const paymentId = body.data?.id || body.id;
+
+      if (!paymentId) {
+        console.error("Falta el ID de pago en el body");
+        return res.status(200).send("OK");
+      }
+
+      // 2. Buscamos al vendedor para tener su token
+      const vendor = await prisma.vendor.findUnique({
+        where: { id: Number(vendedor_id) },
+        include: { client: true },
+      });
+
+      if (!vendor) {
+        console.error("Vendor no encontrado en DB:", vendedor_id);
+        return res.status(200).send("OK");
+      }
+
+      // 3. Consultamos el estado REAL a Mercado Pago (Esto es más seguro que la firma)
+      const url = `https://api.mercadopago.com/v1/payments/${paymentId}`;
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${vendor.mp_access_token}` },
+      });
+
+      const mpResponse = response.data;
+      console.log("Estado en MP:", mpResponse.status);
+
+      // 4. Si está aprobado, actualizamos la base de datos
+      if (mpResponse.status === 'approved') {
+        const orderId = mpResponse.external_reference;
+
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { 
+            estado: 'APPROVED', 
+            mp_payment_id: String(paymentId) 
+          },
+        });
+
+        console.log(`✅ ORDEN ${orderId} ACTUALIZADA A APPROVED`);
+
+        // 5. Notificar al cliente (ej. CentroEnuar)
+        const payload = { id_orden: orderId, estado: 'approved' };
+        const signature = createHmacSignature(payload, vendor.client.webhook_secret);
+        
+        await axios.post(vendor.client.callback_url, payload, {
+          headers: { 'x-motor-signature': signature }
+        }).catch(e => console.error("Error avisando al cliente:", e.message));
+      }
+    }
+
+    return res.status(200).send("OK");
+  } catch (error: any) {
+    console.error('Error procesando webhook:', error.message);
+    return res.status(200).send("OK"); // Siempre 200 para que MP no se trabe
   }
 };
