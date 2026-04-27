@@ -32,7 +32,7 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
       return res.status(404).json({ error: 'Vendor no encontrado o no pertenece a este cliente' });
     }
 
-    // 4. Crear la orden en nuestra base de datos (¡Vital para el Webhook!)
+    // 4. Crear la orden en nuestra base de datos
     const newOrder = await prisma.order.create({
       data: {
         external_id,
@@ -48,10 +48,7 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
     const mpClient = new MercadoPagoConfig({ accessToken: vendor.mp_access_token });
     const preference = new Preference(mpClient);
 
-    // 👇 ACÁ VA TU MAGIA DE NGROK
-    // Reemplazá esta URL por la que te dio tu terminal al correr "npx ngrok http 8000"
-    //const urlNgrok = "https://starry-provided-likeness.ngrok-free.dev"; 
-    const urlNgrok = "https://motor-de-pagos.onrender.com"; //URL DE PRODUCCION
+    const urlNgrok = "https://motor-de-pagos.onrender.com"; 
     const notificationUrl = `${urlNgrok}/webhook?vendedor_id=${vendor.id}`;
 
     const prefResponse = await preference.create({
@@ -67,19 +64,16 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
         ],
         external_reference: newOrder.id,
         notification_url: notificationUrl,
-
-        // 👇 ACÁ ESTÁ LA SOLUCIÓN: Le decimos adónde mandar al usuario al terminar
         back_urls: {
-            success: "https://www.google.com", // Éxito
-            failure: "https://www.google.com", // Fallo
-            pending: "https://www.google.com"  // Pendiente
+            success: "https://www.google.com",
+            failure: "https://www.google.com",
+            pending: "https://www.google.com"
         },  
-
         auto_return: 'approved',
       },
     });
 
-// 6. Actualizar la orden con el checkout URL (USAMOS INIT_POINT REAL)
+    // 6. Actualizar la orden con el checkout URL (Usamos init_point para evitar bucles de Sandbox)
     if (prefResponse.init_point) {
       await prisma.order.update({
         where: { id: newOrder.id },
@@ -87,13 +81,19 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
       });
     }
 
-    // 7. Retornar la respuesta
-    res.status(200).json({
+    // 7. Retornar la respuesta al cliente
+    return res.status(200).json({
       id_orden: newOrder.id,
-      checkout_url: prefResponse.init_point, // JUBILAMOS EL SANDBOX
+      checkout_url: prefResponse.init_point,
       estado: newOrder.estado,
       created_at: newOrder.createdAt,
     });
+
+  } catch (error: any) {
+    console.error('Error en createOrder:', error.message || error);
+    return res.status(500).json({ error: 'Error interno del servidor al crear la orden' });
+  }
+};
 
 export const getOrderStatus = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -108,7 +108,7 @@ export const getOrderStatus = async (req: Request, res: Response): Promise<any> 
       return res.status(404).json({ error: 'Orden no encontrada' });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       id_orden: order.id,
       external_id: order.external_id,
       estado: order.estado,
@@ -117,6 +117,6 @@ export const getOrderStatus = async (req: Request, res: Response): Promise<any> 
     });
   } catch (error) {
     console.error('Error en getOrderStatus:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
