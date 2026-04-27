@@ -83,20 +83,39 @@ export const mpCallback = async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Respuesta de MP no contiene access_token' });
     }
 
-    // 2. Crear Vendor en la BD
-    const newVendor = await prisma.vendor.create({
-      data: {
-        mp_access_token: tokens.access_token,
-        mp_refresh_token: tokens.refresh_token,
-        client_id: client.id,
-        // (Opcional: podriamos hacer un GET a MP para sacar el email de este access_token y guardarlo en mp_email)
-      }
+    // ==========================================
+    // 2. CREAR O ACTUALIZAR VENDOR EN LA BD
+    // ==========================================
+    let vendor = await prisma.vendor.findFirst({
+      where: { client_id: client.id }
     });
 
+    if (vendor) {
+      // Si ya existe en la base de datos, lo actualizamos (Update)
+      vendor = await prisma.vendor.update({
+        where: { id: vendor.id },
+        data: {
+          mp_access_token: tokens.access_token,
+          mp_refresh_token: tokens.refresh_token,
+        }
+      });
+    } else {
+      // Si es la primera vez que se vincula, lo creamos (Create)
+      vendor = await prisma.vendor.create({
+        data: {
+          mp_access_token: tokens.access_token,
+          mp_refresh_token: tokens.refresh_token,
+          client_id: client.id,
+        }
+      });
+    }
+
+    // ==========================================
     // 3. Notificar al sistema cliente (POST server-to-server)
+    // ==========================================
     const payload = {
       client_id: client.client_id,
-      vendor_id: newVendor.id,
+      vendor_id: vendor.id,
       mp_email: 'cuenta_vinculada@mercadopago.com', // Placeholder por ahora
       estado: 'success',
       error_msg: null,
