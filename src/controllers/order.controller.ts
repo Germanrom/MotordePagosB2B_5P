@@ -79,26 +79,21 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
       },
     });
 
-    // 6. Actualizar la orden con el checkout URL
-    if (prefResponse.sandbox_init_point) {
+// 6. Actualizar la orden con el checkout URL (USAMOS INIT_POINT REAL)
+    if (prefResponse.init_point) {
       await prisma.order.update({
         where: { id: newOrder.id },
-        data: { checkout_url: prefResponse.sandbox_init_point }
+        data: { checkout_url: prefResponse.init_point }
       });
     }
 
     // 7. Retornar la respuesta
     res.status(200).json({
       id_orden: newOrder.id,
-      checkout_url: prefResponse.sandbox_init_point,
+      checkout_url: prefResponse.init_point, // JUBILAMOS EL SANDBOX
       estado: newOrder.estado,
       created_at: newOrder.createdAt,
     });
-  } catch (error: any) {
-    console.error('Error en createOrder:', error.message || error);
-    res.status(500).json({ error: 'Error interno del servidor al crear la orden' });
-  }
-};
 
 export const getOrderStatus = async (req: Request, res: Response): Promise<any> => {
   try {
