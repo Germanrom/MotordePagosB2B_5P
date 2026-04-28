@@ -65,9 +65,9 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
         external_reference: newOrder.id,
         notification_url: notificationUrl,
         back_urls: {
-            success: "https://www.google.com",
+            success: "https://fivepeaks.com.ar/",
             failure: "https://www.google.com",
-            pending: "https://www.google.com"
+            pending: "https://www.youtube.com"
         },  
         auto_return: 'approved',
       },
