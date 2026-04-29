@@ -22,6 +22,13 @@ app.get('/', (req, res) => {
 });
 const PORT = process.env.PORT || 10000;
 
+// 2. AGREGÁS ESTE BLOQUE EXACTO DE CORS
+app.use(cors({
+  origin: '*', // En desarrollo permitimos que cualquiera se conecte
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'X-API-Key', 'Authorization'] // ¡Clave para que no bloquee tu llave!
+}));
+
 app.use(cors());
 app.use(express.json());
 

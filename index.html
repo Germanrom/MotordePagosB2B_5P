@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel B2B - Sistema del Cliente</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 { color: #333; margin-bottom: 5px; }
+        p { color: #666; font-size: 14px; margin-bottom: 20px; }
+        .input-group {
+            text-align: left;
+            margin-bottom: 15px;
+        }
+        label { display: block; font-size: 12px; color: #555; margin-bottom: 5px; font-weight: bold;}
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-family: monospace;
+        }
+        button {
+            background-color: #009EE3; /* Azul Mercado Pago */
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            width: 100%;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+        button:hover { background-color: #007eb5; }
+        .loader {
+            display: none;
+            margin-top: 15px;
+            color: #009EE3;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Panel de Vendedor</h2>
+        <p>Simulación del sistema de tu Cliente B2B</p>
+
+        <div class="input-group">
+            <label for="clientId">Client ID (De tu Supabase)</label>
+            <input type="text" id="clientId" value="ENUAR" placeholder="Ej: ENUAR">
+        </div>
+
+        <div class="input-group">
+            <label for="apiKey">X-API-Key (De tu Supabase)</label>
+            <input type="password" id="apiKey" placeholder="Pegá el API Key de este cliente acá">
+        </div>
+
+        <button id="btnVincular" onclick="iniciarVinculacion()">
+            🔗 Vincular mi Mercado Pago
+        </button>
+        
+        <div id="loader" class="loader">Generando link seguro... ⏳</div>
+    </div>
+
+    <script>
+        async function iniciarVinculacion() {
+            const clientId = document.getElementById('clientId').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const btn = document.getElementById('btnVincular');
+            const loader = document.getElementById('loader');
+
+            if(!clientId || !apiKey) {
+                alert("Por favor, completá el Client ID y el API Key");
+                return;
+            }
+
+            // ⚠️ ACÁ PONÉ LA URL REAL DE TU MOTOR EN RENDER (o localhost si estás probando local)
+            // Asegurate de que la ruta coincida con la que armaste en Express (ej: /auth/mp-url)
+            const backendUrl = `https://motor-de-pagos.onrender.com/auth/mp-url?client_id=${clientId}`;
+
+            btn.style.display = 'none';
+            loader.style.display = 'block';
+
+            try {
+                const response = await fetch(backendUrl, {
+                    method: 'GET',
+                    headers: {
+                        'X-API-Key': apiKey,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.auth_url) {
+                    // ¡Acá ocurre la magia! Redirigimos al usuario a Mercado Pago
+                    window.location.href = data.auth_url;
+                } else {
+                    alert('Error del Motor: ' + (data.error || 'Desconocido'));
+                    btn.style.display = 'block';
+                    loader.style.display = 'none';
+                }
+            } catch (error) {
+                console.error("Error de conexión:", error);
+                alert("Error de conexión. Revisá la consola (F12) para más detalles.");
+                btn.style.display = 'block';
+                loader.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
