@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import prisma from '../config/prisma';
+import prisma from '../../config/prisma';
 import axios from 'axios';
 import crypto from 'crypto';
-import { createHmacSignature } from '../utils/hmac';
+import { createHmacSignature } from '../../utils/hmac';
 
 // Función para validar la firma HMAC enviada por Mercado Pago en Producción
 const validateMpSignature = (xSignature: string, xRequestId: string, dataId: string): boolean => {

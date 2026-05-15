@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { createOrder, getOrderStatus } from '../controllers/order.controller';
-import { verifyApiKey } from '../middlewares/auth';
+import { createOrder, getOrderStatus } from '../../controllers/v2/order.controller';
+import { verifyApiKey } from '../../middlewares/v2/auth';
 
 const router = Router();
 

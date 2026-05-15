@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import prisma from '../config/prisma';
+import prisma from '../../config/prisma';
 import axios from 'axios';
-import { createHmacSignature } from '../utils/hmac';
+import { createHmacSignature } from '../../utils/hmac';
 
 export const getMpUrl = async (req: Request, res: Response) => {
   try {

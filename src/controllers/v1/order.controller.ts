@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import prisma from '../config/prisma';
+import prisma from '../../config/prisma';
 
 const createOrderSchema = z.object({
   vendor_id: z.number(),

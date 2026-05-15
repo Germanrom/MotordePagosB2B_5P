@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { getMpUrl, mpCallback } from '../controllers/auth.controller';
-import { verifyApiKey } from '../middlewares/auth';
+import { getMpUrl, mpCallback } from '../../controllers/v2/auth.controller';
+import { verifyApiKey } from '../../middlewares/v2/auth';
 
 const router = Router();
 
