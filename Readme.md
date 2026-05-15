@@ -40,4 +40,4 @@ sequenceDiagram
         Motor->>DB: Actualiza estado de la Orden a APPROVED
         Motor->>SistemaCliente: Dispara Webhook HMAC notificando cobro exitoso
         MP->>Comprador: Redirige automáticamente al back_url (success)
-    end
+    end# motor-pagos-b2b
