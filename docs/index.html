@@ -107,14 +107,17 @@
 
   <script>
     // ==========================================
-    // ⚙️ CONFIGURACIÓN DEL PROYECTO (Ajustado ayer)
+    // ⚙️ CONFIGURACIÓN DEL PROYECTO (¡Variables Globales!)
     // ==========================================
-    const BASE_URL = "http://localhost:10000";
-    const TU_API_KEY_MAESTRA = "A qui va el API KEY de tu CLIENT"; // La que usás en Postman
-    const ID_DEL_VENDEDOR_EN_SUPABASE = 1;                 // ID con el token correcto en Supabase
+    const BASE_URL = "https://motordepagosb2b-5p.onrender.com"; 
+
+    // 👉 ¡REEMPLAZÁ ESTOS VALORES POR TUS CREDENCIALES REALES!
+    const TU_API_KEY_MAESTRA = "super_secreto_motor_pagos_2026_5P"; 
+    const MP_PUBLIC_KEY = "APP_USR-a6d73614-ee3e-4fae-b324-6b7a6c4c3086"; 
+    const ID_DEL_VENDEDOR_EN_SUPABASE = 1;                 
     
-    // Inicializa Mercado Pago con tu clave pública de pruebas
-    const mp = new MercadoPago('Aqui va el MP ACCESS TOKEN DE TU VENDOR'); 
+    // Inicializa Mercado Pago con la variable de tu clave pública
+    const mp = new MercadoPago(MP_PUBLIC_KEY); 
     let paymentBrickController = null;
 
     // Componentes del DOM
@@ -130,7 +133,7 @@
       if (selectorVersion.value === 'v2') {
         return `${BASE_URL}/v2/pagos/brick`;
       } else {
-        return `${BASE_URL}/v1/ordenes`; // Ajustá a tu endpoint de pagos V1 si no es /v1/ordenes
+        return `${BASE_URL}/v1/ordenes`; 
       }
     }
 
@@ -159,11 +162,11 @@
       const settings = {
         initialization: {
           amount: 1500, // Monto de prueba de la transacción ($1500)
-          preferenceId: "", // En Bricks API no es obligatorio si manejás el backend directo
+          preferenceId: "", 
         },
         customization: {
           paymentMethods: {
-            theme: "default", // 'default' | 'dark' | 'bootstrap'
+            theme: "default", 
             creditCard: "all",
             debitCard: "all",
           },
@@ -176,13 +179,11 @@
             return new Promise((resolve, reject) => {
               console.log("📦 Datos capturados por el Brick de MP:", formData);
               
-              // Inyectamos de forma dinámica el vendor_id que requiere nuestro backend multi-tenant
               const datosParaElMotor = {
                 ...formData,
                 vendorId: ID_DEL_VENDEDOR_EN_SUPABASE
               };
 
-              // Envío directo al endpoint calculado dinámicamente
               fetch(obtenerUrlMotor(), {
                 method: "POST",
                 headers: {
@@ -215,18 +216,17 @@
     const bricksBuilder = mp.bricks();
     renderPaymentBrick(bricksBuilder);
 
- // ==========================================
+   // ==========================================
     // 🕹️ BOTÓN DE SIMULACIÓN (LÓGICA V1)
     // ==========================================
     document.getElementById('btn-pagar-v1').addEventListener('click', () => {
       console.log("📡 Enviando petición tradicional a la V1...");
       
-      // ✅ Armamos el payload EXACTO que te pide tu validador Zod
       const payloadV1 = {
-        vendor_id: Number(ID_DEL_VENDEDOR_EN_SUPABASE), // Forzamos que sea número
-        monto: 533,                                    // Número
-        concepto: "Cobro de Orden - Simulación V1",     // String
-        external_id: "ORD-" + Date.now()                // String único simulado
+        vendor_id: Number(ID_DEL_VENDEDOR_EN_SUPABASE),
+        monto: 533,                                     
+        concepto: "Cobro de Orden - Simulación V1",     
+        external_id: "ORD-" + Date.now()                
       };
 
       fetch(obtenerUrlMotor(), {
@@ -241,7 +241,6 @@
       .then(respuestaData => {
         console.log("🎉 Respuesta completa del Motor V1:", respuestaData);
         
-        // Si el backend sigue devolviendo errores por otra cosa, los vemos acá
         if (respuestaData.details) {
           console.error("🚨 DETALLE DE ERRORES:");
           console.table(respuestaData.details);
@@ -249,8 +248,6 @@
           return;
         }
 
-        // 🚀 REDIRECCIÓN AL LINK GENERADO
-        // Buscamos dónde te devuelve tu backend el link (init_point, url o link)
         const linkPago = respuestaData.init_point || 
                          respuestaData.url || 
                          (respuestaData.data && respuestaData.data.init_point) ||
