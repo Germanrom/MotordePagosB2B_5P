@@ -95,11 +95,13 @@
     
     <!-- CONTENEDOR V2: El Brick de Mercado Pago se dibuja acá -->
     <div id="paymentBrick_container"></div>
-    <!-- Agregás esto arriba de tus botones en el HTML -->
-    <div style="margin-bottom: 15px;">
-      <label>🔑 API Key Maestra (Solo para pruebas):</label>
-      <input type="password" id="input-api-key" placeholder="Pegá tu clave secreta acá">
+    
+    <!-- CAJA DE SEGURIDAD PARA LA API KEY -->
+    <div style="margin-bottom: 15px; padding-top: 15px; border-top: 1px solid #e4e4e7;">
+      <label style="display: block; font-size: 14px; margin-bottom: 5px; font-weight: 600;">🔑 API Key Maestra (Solo para pruebas):</label>
+      <input type="password" id="input-api-key" placeholder="Pegá tu clave secreta acá" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box;">
     </div>
+
     <!-- CONTENEDOR V1: Formulario simulado para cuando uses el motor viejo -->
     <div id="v1-fallback-form" style="display: none;">
       <p style="color:#666; font-size: 14px; margin-bottom: 15px;">
@@ -111,15 +113,15 @@
 
   <script>
     // ==========================================
-    // ⚙️ CONFIGURACIÓN DEL PROYECTO (¡Variables Globales!)
+    // ⚙️ CONFIGURACIÓN DEL PROYECTO
     // ==========================================
     const BASE_URL = "https://motordepagosb2b-5p.onrender.com"; 
 
-    // 👉 ¡REEMPLAZÁ ESTOS VALORES POR TUS CREDENCIALES REALES!
+    // 👉 Credenciales Públicas
     const MP_PUBLIC_KEY = "APP_USR-a6d73614-ee3e-4fae-b324-6b7a6c4c3086"; 
     const ID_DEL_VENDEDOR_EN_SUPABASE = 1;                 
     
-    // Inicializa Mercado Pago con la variable de tu clave pública
+    // Inicializa Mercado Pago
     const mp = new MercadoPago(MP_PUBLIC_KEY); 
     let paymentBrickController = null;
 
@@ -164,7 +166,7 @@
     const renderPaymentBrick = async (bricksBuilder) => {
       const settings = {
         initialization: {
-          amount: 1500, // Monto de prueba de la transacción ($1500)
+          amount: 1500,
           preferenceId: "", 
         },
         customization: {
@@ -176,34 +178,32 @@
         },
         callbacks: {
           onReady: () => {
-            console.log("✅ El Payment Brick se cargó correctamente en pantalla");
+            console.log("✅ El Payment Brick se cargó correctamente");
           },
           onSubmit: ({ selectedPaymentMethod, formData }) => {
             return new Promise((resolve, reject) => {
-              console.log("📦 Datos capturados por el Brick de MP:", formData);
+              // 1. LEEMOS LA API KEY DE LA CAJA DE TEXTO
+              const apiKeyIngresada = document.getElementById('input-api-key').value;
+              
+              if (!apiKeyIngresada) {
+                alert("¡Ey! Te olvidaste de poner la API Key Maestra para testear.");
+                reject();
+                return;
+              }
+
+              console.log("📦 Datos capturados por el Brick:", formData);
               
               const datosParaElMotor = {
                 ...formData,
                 vendorId: ID_DEL_VENDEDOR_EN_SUPABASE
               };
 
-              // Y en tu JavaScript, en vez de tenerla fija arriba de todo, la leés al momento del click:
-              document.getElementById('btn-pagar-v1').addEventListener('click', () => {
-                const TU_API_KEY_MAESTRA = document.getElementById('input-api-key').value;
-                
-                if(!TU_API_KEY_MAESTRA) {
-                    alert("¡Ey! Te olvidaste de poner la API Key para testear.");
-                    return;
-                }
-                
-                // Acá sigue tu fetch() normalmente usando esa variable...
-              });
-
+              // 2. ENVIAMOS LA PETICIÓN CON LA CLAVE LEÍDA
               fetch(obtenerUrlMotor(), {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  "X-API-Key": TU_API_KEY_MAESTRA
+                  "X-API-Key": apiKeyIngresada
                 },
                 body: JSON.stringify(datosParaElMotor),
               })
@@ -227,7 +227,6 @@
       paymentBrickController = await bricksBuilder.create("payment", "paymentBrick_container", settings);
     };
 
-    // Inicializamos el constructor de Bricks
     const bricksBuilder = mp.bricks();
     renderPaymentBrick(bricksBuilder);
 
@@ -235,6 +234,14 @@
     // 🕹️ BOTÓN DE SIMULACIÓN (LÓGICA V1)
     // ==========================================
     document.getElementById('btn-pagar-v1').addEventListener('click', () => {
+      // 1. LEEMOS LA API KEY DE LA CAJA DE TEXTO
+      const apiKeyIngresada = document.getElementById('input-api-key').value;
+      
+      if (!apiKeyIngresada) {
+        alert("¡Ey! Te olvidaste de poner la API Key Maestra para testear.");
+        return;
+      }
+
       console.log("📡 Enviando petición tradicional a la V1...");
       
       const payloadV1 = {
@@ -244,11 +251,12 @@
         external_id: "ORD-" + Date.now()                
       };
 
+      // 2. ENVIAMOS LA PETICIÓN CON LA CLAVE LEÍDA
       fetch(obtenerUrlMotor(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": TU_API_KEY_MAESTRA
+          "X-API-Key": apiKeyIngresada
         },
         body: JSON.stringify(payloadV1)
       })
