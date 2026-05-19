@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prueba de Motor de Pagos - Dual V1/V2</title>
+  <title>Prueba de Motor de Pagos FivePeaks - Dual V1/V2</title>
   <!-- SDK Oficial de Mercado Pago Seguro -->
   <script src="https://sdk.mercadopago.com/js/v2"></script>
   <style>
@@ -95,7 +95,11 @@
     
     <!-- CONTENEDOR V2: El Brick de Mercado Pago se dibuja acá -->
     <div id="paymentBrick_container"></div>
-
+    <!-- Agregás esto arriba de tus botones en el HTML -->
+    <div style="margin-bottom: 15px;">
+      <label>🔑 API Key Maestra (Solo para pruebas):</label>
+      <input type="password" id="input-api-key" placeholder="Pegá tu clave secreta acá">
+    </div>
     <!-- CONTENEDOR V1: Formulario simulado para cuando uses el motor viejo -->
     <div id="v1-fallback-form" style="display: none;">
       <p style="color:#666; font-size: 14px; margin-bottom: 15px;">
@@ -112,7 +116,6 @@
     const BASE_URL = "https://motordepagosb2b-5p.onrender.com"; 
 
     // 👉 ¡REEMPLAZÁ ESTOS VALORES POR TUS CREDENCIALES REALES!
-    const TU_API_KEY_MAESTRA = "super_secreto_motor_pagos_2026_5P"; 
     const MP_PUBLIC_KEY = "APP_USR-a6d73614-ee3e-4fae-b324-6b7a6c4c3086"; 
     const ID_DEL_VENDEDOR_EN_SUPABASE = 1;                 
     
@@ -183,6 +186,18 @@
                 ...formData,
                 vendorId: ID_DEL_VENDEDOR_EN_SUPABASE
               };
+
+              // Y en tu JavaScript, en vez de tenerla fija arriba de todo, la leés al momento del click:
+              document.getElementById('btn-pagar-v1').addEventListener('click', () => {
+                const TU_API_KEY_MAESTRA = document.getElementById('input-api-key').value;
+                
+                if(!TU_API_KEY_MAESTRA) {
+                    alert("¡Ey! Te olvidaste de poner la API Key para testear.");
+                    return;
+                }
+                
+                // Acá sigue tu fetch() normalmente usando esa variable...
+              });
 
               fetch(obtenerUrlMotor(), {
                 method: "POST",
