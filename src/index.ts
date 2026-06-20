@@ -15,6 +15,9 @@ import pagosRoutesV2 from './routes/v2/pago.routes';
 // import orderRoutesV2 from './routes/v2/order.routes';
 // import webhookRoutesV2 from './routes/v2/webhook.routes';
 
+// 3. IMPORTAMOS LAS RUTAS DE LA PRUEBA DE CONCEPTO (NUEVO)
+import pocRoutes from './routes/poc.routes';
+
 dotenv.config();
 
 const app = express();
@@ -63,6 +66,9 @@ app.use('/v2/pagos', pagosRoutesV2); // Acá atiende el endpoint /v2/pagos/brick
 // Si los descomentaste arriba, descomentalos acá también:
 //app.use('/v2/ordenes', orderRoutesV2);
 //app.use('/v2/webhook', webhookRoutesV2);
+
+// --- 📊 PRUEBA DE CONCEPTO B2B (NUEVO) ---
+app.use('/api/poc', pocRoutes);
 
 // --- INICIO DEL SERVIDOR ---
 app.listen(PORT, () => {
