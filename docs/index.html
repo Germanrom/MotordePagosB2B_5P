@@ -52,6 +52,20 @@
   </div>
 
   <div class="card">
+      <h2>Fase 1: Vincular Vendedor (Mercado Pago Connect)</h2>
+      <p>Hacé clic en el botón azul para iniciar sesión en Mercado Pago y autorizar al motor B2B a cobrar en tu nombre. ¡No más tokens manuales!</p>
+      
+      <div class="input-group">
+        <label>Tu Client ID interno (El identificador de tu Pizzería en el Motor):</label>
+        <input type="text" id="oauth-client-id" value="cliente_prueba_123" placeholder="Ej: cliente_prueba_123">
+      </div>
+
+      <button id="btn-oauth-vincular" class="btn" style="background-color: #009ee3; color: white; width: 100%; text-align: center; font-size: 16px; padding: 15px;">
+         🔵 Vincular mi cuenta de Mercado Pago
+      </button>
+    </div>
+
+  <div class="card">
     <h2>2. Simular un Pago (Checkout)</h2>
     <div class="input-group">
       <label>ID del Vendedor a cobrar (El ID que te dio el paso 1):</label>
@@ -218,7 +232,7 @@
       };
       renderPaymentBrick(mp.bricks());
     });
-    
+
   // --- V1: LINK TRADICIONAL ---
     document.getElementById('btn-pagar-v1').addEventListener('click', () => {
       const apiKey = getApiKey(); if(!apiKey) return;
@@ -307,6 +321,51 @@
         document.getElementById('tabla-pagos').style.display = 'table';
       })
       .catch(err => alert("Error cargando dashboard: " + err.message));
+    });
+    // --- 🔵 OAUTH: BOTÓN VINCULAR MERCADO PAGO ---
+    document.getElementById('btn-oauth-vincular').addEventListener('click', () => {
+      // 1. Agarramos la API Key Maestra y el Client ID del HTML
+      const apiKey = getApiKey(); // Asumo que ya tenés esta función que lee el input amarillo
+      if (!apiKey) return;
+      
+      const clientId = document.getElementById('oauth-client-id').value;
+      if (!clientId) return alert("Por favor ingresá un Client ID válido.");
+
+      // Le avisamos al usuario que estamos cargando
+      const btn = document.getElementById('btn-oauth-vincular');
+      btn.innerText = "⏳ Generando link seguro...";
+      btn.disabled = true;
+
+      // 2. Le pegamos a TU endpoint seguro (usamos la variable BASE_URL que ya tenías)
+      fetch(`${BASE_URL}/v1/auth/mp-url?client_id=${clientId}`, {
+        method: 'GET',
+        headers: {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        // Restauramos el botón
+        btn.innerText = "🔵 Vincular mi cuenta de Mercado Pago";
+        btn.disabled = false;
+
+        if (data.error) {
+          return alert("Error del servidor: " + data.error);
+        }
+
+        if (data.auth_url) {
+          // 3. ¡Magia! Redirigimos al usuario a la pantalla azul de Mercado Pago
+          window.location.href = data.auth_url;
+        } else {
+          alert("No se recibió la URL de autorización.");
+        }
+      })
+      .catch(err => {
+        btn.innerText = "🔵 Vincular mi cuenta de Mercado Pago";
+        btn.disabled = false;
+        alert("Error de conexión: " + err.message);
+      });
     });
   </script>
 </body>
