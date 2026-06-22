@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
 // 1. REGISTRO DE VENDEDOR (Onboarding simple B2B)
 router.post('/vendedores', async (req, res) => {
   try {
-    const { mp_email, mp_access_token } = req.body;
+    const { mp_email, mp_access_token, mp_refresh_token } = req.body;
     
     // ✨ LÓGICA NUEVA: Leemos la API Key que viene del Index.html
     const apiKey = req.headers['x-api-key'] as string;
@@ -39,6 +39,7 @@ router.post('/vendedores', async (req, res) => {
       data: {
         mp_email: mp_email,
         mp_access_token: mp_access_token,
+        mp_refresh_token: mp_refresh_token || null, // Lo guardamos si lo mandan
         client_id: clienteReal.id // Usamos el ID real de tu cliente
       }
     });
