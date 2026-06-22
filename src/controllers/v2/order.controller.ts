@@ -1,3 +1,4 @@
+/*
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
@@ -120,3 +121,4 @@ export const getOrderStatus = async (req: Request, res: Response): Promise<any> 
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+*/
