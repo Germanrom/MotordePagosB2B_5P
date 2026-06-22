@@ -186,7 +186,7 @@
                 const vendorId = parseInt(document.getElementById('checkout-vendor-id').value);
                 
                 // Asegurate de que esta URL coincida con la ruta V2 de tu backend
-                fetch(`${BASE_URL}/v2/pagos`, { 
+                fetch(`${BASE_URL}/v2/pagos/brick`, { 
                   method: "POST",
                   headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
                   body: JSON.stringify({ ...formData, vendor_id: vendorId }) 
