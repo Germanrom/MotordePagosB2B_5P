@@ -134,7 +134,8 @@
       
       const payload = {
         mp_email: document.getElementById('vendor-email').value,
-        mp_access_token: document.getElementById('vendor-token').value
+        mp_access_token: document.getElementById('vendor-token').value,
+        mp_refresh_token: document.getElementById('vendor-refresh-token').value
       };
 
       fetch(`${BASE_URL}/api/poc/vendedores`, {
