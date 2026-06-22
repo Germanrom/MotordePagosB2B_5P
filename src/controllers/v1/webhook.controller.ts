@@ -43,7 +43,7 @@ const validateMpSignature = (xSignature: string, xRequestId: string, dataId: str
 
     if (!isValid) {
       console.error(`[ERROR Webhook] Firma inválida. Posible intento de fraude o Secret incorrecto.`);
-      return false; // EN PRODUCCIÓN ESTO DEBE SER FALSE
+      return false; 
     }
 
     return true;
@@ -64,8 +64,8 @@ export const handleWebhook = async (req: Request, res: Response): Promise<any> =
     console.log(`Vendedor ID (Query): ${vendedor_id}`);
 
     if (!vendedor_id) {
-      console.error("[Webhook] Falta vendedor_id en la URL");
-      return res.status(200).send("OK"); // Respondemos 200 para que MP no reintente
+      console.error("[Webhook] Falta vendedor_id en la URL de notificación");
+      return res.status(200).send("OK"); 
     }
 
     // 1. Verificamos si es un evento de pago
@@ -81,11 +81,11 @@ export const handleWebhook = async (req: Request, res: Response): Promise<any> =
 
       // 2. Validar la firma de seguridad (HMAC)
       if (!validateMpSignature(xSignature, xRequestId, String(paymentId))) {
-        console.error(`[ALERTA Webhook] Firma rechazada para el pago ${paymentId}`);
+        console.error(`[ALERTA Webhook] Firma de seguridad rechazada para el pago ${paymentId}`);
         return res.status(403).send("Firma de seguridad inválida");
       }
 
-      // 3. Buscamos al vendedor para tener su token
+      // 3. Buscamos al vendedor para obtener su token de acceso
       const vendor = await prisma.vendor.findUnique({
         where: { id: Number(vendedor_id) },
         include: { client: true },
@@ -96,7 +96,7 @@ export const handleWebhook = async (req: Request, res: Response): Promise<any> =
         return res.status(200).send("OK");
       }
 
-      // 4. Consultamos el estado REAL a Mercado Pago
+      // 4. Consultamos el estado REAL del pago directamente a Mercado Pago
       const url = `https://api.mercadopago.com/v1/payments/${paymentId}`;
       const response = await axios.get(url, {
         headers: { Authorization: `Bearer ${vendor.mp_access_token}` },
@@ -105,27 +105,30 @@ export const handleWebhook = async (req: Request, res: Response): Promise<any> =
       const mpResponse = response.data;
       console.log(`[Webhook] Estado del pago ${paymentId} en MP: ${mpResponse.status}`);
 
-      // 5. Si está aprobado, actualizamos la base de datos
+      // 5. Si está aprobado en los servidores de MP, actualizamos nuestro motor
       if (mpResponse.status === 'approved') {
-        const orderId = mpResponse.external_reference;
+        const externalIdRef = mpResponse.external_reference; // Contiene tu código "ORD-XXXX"
 
-        const order = await prisma.order.findUnique({
-          where: { id: orderId }
+        // ✨ CORRECCIÓN AQUÍ: Buscamos usando findFirst filtrando por la columna external_id
+        const order = await prisma.order.findFirst({
+          where: { external_id: externalIdRef }
         });
 
-        // Solo procesamos si la orden existe y aún está PENDING
+        // Solo procesamos si la orden existe en nuestro sistema y aún está PENDING
         if (order && order.estado === 'PENDING') {
+          
+          // ✨ CORRECCIÓN AQUÍ: Ahora que tenemos la orden, actualizamos usando su ID único real (UUID)
           await prisma.order.update({
-            where: { id: orderId },
+            where: { id: order.id },
             data: {
               estado: 'APPROVED',
               mp_payment_id: String(paymentId)
             },
           });
 
-          console.log(`✅ ORDEN ${orderId} ACTUALIZADA A APPROVED`);
+          console.log(`✅ ORDEN ${externalIdRef} ACTUALIZADA EXITOSAMENTE A APPROVED`);
 
-          // 6. Notificar al sistema del cliente (ej. CentroEnuar)
+          // 6. Notificar al sistema externo del cliente (CentroEnuar)
           const payload = {
             id_orden: order.id,
             external_id: order.external_id,
@@ -144,19 +147,19 @@ export const handleWebhook = async (req: Request, res: Response): Promise<any> =
                 'Content-Type': 'application/json'
               }
             });
-            console.log(`[Webhook] Notificación exitosa al cliente: ${vendor.client.client_id}`);
+            console.log(`[Webhook] Notificación enviada con éxito al cliente: ${vendor.client.client_id}`);
           } catch (e: any) {
-            console.error(`[Webhook] Error avisando al cliente ${vendor.client.client_id}:`, e.message);
+            console.error(`[Webhook] Error al enviar callback al cliente ${vendor.client.client_id}:`, e.message);
           }
         } else {
-           console.log(`[Webhook] Orden ${orderId} no encontrada o ya procesada.`);
+           console.log(`[Webhook] Orden de referencia ${externalIdRef} no encontrada en BD o ya se encontraba procesada.`);
         }
       }
     }
 
     return res.status(200).send("OK");
   } catch (error: any) {
-    console.error('[ERROR CRITICO Webhook]:', error.message || error);
-    return res.status(200).send("OK"); // Siempre 200 para que MP no reintente eternamente
+    console.error('[ERROR CRÍTICO EN CONTROLADOR WEBHOOK]:', error.message || error);
+    return res.status(200).send("OK"); 
   }
 };

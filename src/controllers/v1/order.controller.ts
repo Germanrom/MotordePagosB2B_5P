@@ -48,8 +48,9 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
     const mpClient = new MercadoPagoConfig({ accessToken: vendor.mp_access_token });
     const preference = new Preference(mpClient);
 
-    const urlNgrok = "https://motor-de-pagos.onrender.com"; 
-    const notificationUrl = `${urlNgrok}/webhook?vendedor_id=${vendor.id}`;
+    // ✨ CORRECCIÓN: Dominio real y ruta completa del Webhook en Render
+    const urlBackend = "https://motordepagosb2b-5p.onrender.com"; 
+    const notificationUrl = `${urlBackend}/v1/webhook?vendedor_id=${vendor.id}`;
 
     const prefResponse = await preference.create({
       body: {
@@ -62,12 +63,13 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
             currency_id: moneda,
           },
         ],
-        external_reference: newOrder.id,
+        // ✨ CORRECCIÓN: Le pasamos el external_id (Ej: ORD-12345) para que el webhook lo encuentre
+        external_reference: newOrder.external_id, 
         notification_url: notificationUrl,
         back_urls: {
             success: "https://fivepeaks.com.ar/",
-            failure: "https://www.google.com",
-            pending: "https://www.youtube.com"
+            failure: "https://fivepeaks.com.ar/", // Unificamos los retornos para mantener al usuario en tu web
+            pending: "https://fivepeaks.com.ar/"
         },  
         auto_return: 'approved',
       },
