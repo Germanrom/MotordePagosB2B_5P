@@ -75,6 +75,14 @@
     </div>
     
     <div id="v1-fallback-form" style="display: none;">
+      <div class="input-group">
+        <label>Monto a cobrar (V1):</label>
+        <input type="number" id="monto-v1" value="2500">
+      </div>
+      <div class="input-group">
+        <label>Concepto a cobrar:</label>
+        <input type="text" id="concepto-v1" value="Zapatillas Nike Air">
+      </div>
       <button class="btn" id="btn-pagar-v1">Simular Pago Tradicional V1</button>
     </div>
   </div>
@@ -210,17 +218,27 @@
       };
       renderPaymentBrick(mp.bricks());
     });
-
-    // --- V1: LINK TRADICIONAL ---
+    
+  // --- V1: LINK TRADICIONAL ---
     document.getElementById('btn-pagar-v1').addEventListener('click', () => {
       const apiKey = getApiKey(); if(!apiKey) return;
+      
       const vendorId = parseInt(document.getElementById('checkout-vendor-id').value);
+      
+      const montoV1 = parseFloat(document.getElementById('monto-v1').value);
+      // ✨ NUEVO: Leemos el concepto desde el HTML
+      const conceptoV1 = document.getElementById('concepto-v1').value;
+      
+      // Validaciones de seguridad
+      if (!montoV1 || montoV1 <= 0) return alert("Ingresá un monto válido para la V1.");
+      if (!conceptoV1 || conceptoV1.trim() === "") return alert("Ingresá un concepto para cobrar.");
 
+      // Armamos el paquete 100% dinámico
       const payloadV1 = {
         vendor_id: vendorId,
-        monto: 533,                                     
-        concepto: "Cobro de Orden - V1",     
-        external_id: "ORD-" + Date.now()                
+        monto: montoV1,
+        concepto: conceptoV1, // ✨ Mandamos el texto que escribió el usuario
+        external_id: "ORD-V1-" + Date.now() 
       };
 
       fetch(`${BASE_URL}/v1/ordenes`, {
@@ -233,11 +251,12 @@
         if(data.error) return alert("Error: " + data.error);
         const linkPago = data.checkout_url || data.init_point || data.url;
         if(linkPago) {
-          window.location.href = linkPago;
+          window.open(linkPago, '_blank'); 
         } else {
           alert("Orden creada en BD (Revisá el dashboard)");
         }
-      });
+      })
+      .catch(err => alert("Error de conexión: " + err.message));
     });
 
     // ==========================================
