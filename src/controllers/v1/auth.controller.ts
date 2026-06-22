@@ -23,7 +23,7 @@ export const getMpUrl = async (req: Request, res: Response): Promise<any> => {
     }
 
     // Usamos EXACTAMENTE la URL que configuraste en MP
-    const redirectUri = 'https://motor-de-pagos.onrender.com/auth/callback';
+    const redirectUri = 'https://motordepagosb2b-5p.onrender.com/auth/callback';
     
     // Armamos un "State Compuesto". Ejemplo: "CLI-123___4" (Cliente 123, Vendedor 4)
     // Si no mandan vendor_id, le ponemos "NEW" para que cree uno nuevo.
@@ -60,7 +60,7 @@ export const mpCallback = async (req: Request, res: Response): Promise<any> => {
 
     // 1. Intercambiar code por tokens con MP
     const url = 'https://api.mercadopago.com/oauth/token';
-    const redirectUri = 'https://motor-de-pagos.onrender.com/auth/callback'; // Exacta
+    const redirectUri = 'https://motordepagosb2b-5p.onrender.com/auth/callback';// Exacta
     
     const mpData: Record<string, string> = {
       client_secret: process.env.MP_CLIENT_SECRET || '',
