@@ -103,6 +103,7 @@
           <th>Concepto</th>
           <th>Monto</th>
           <th>Estado</th>
+          <th>Accion</th>
         </tr>
       </thead>
       <tbody id="tabla-body">
@@ -243,25 +244,34 @@
         tbody.innerHTML = ''; // Limpiar tabla
         
         data.data.forEach(orden => {
-          // ✨ LÓGICA NUEVA: Formateamos la fecha y hora al estilo argentino
+          // 1. Formateamos la fecha y hora
           const fechaFormateada = new Date(orden.createdAt).toLocaleString('es-AR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
           });
 
-          const badgeClass = orden.estado.toLowerCase() === 'approved' ? 'status-approved' : 'status-pending';
+          // 2. Evaluamos el estado
+          const isApproved = orden.estado.toLowerCase() === 'approved';
+          const badgeClass = isApproved ? 'status-approved' : 'status-pending';
           
-          // ✨ LÓGICA NUEVA: Agregamos el <td> de la fecha formateada al principio
+          // ✨ 3. LÓGICA NUEVA: Botón de link de pago dinámico
+          let accionHtml = '<span style="color: #9ca3af; font-size: 12px;">Sin link</span>';
+          
+          if (isApproved) {
+            accionHtml = '<span style="color: #166534; font-weight: bold; font-size: 13px;">✅ Pagado</span>';
+          } else if (orden.checkout_url) {
+            // Generamos un botón visual que en realidad es un link (<a>) que abre en otra pestaña
+            accionHtml = `<a href="${orden.checkout_url}" target="_blank" class="btn" style="padding: 6px 12px; font-size: 12px; text-decoration: none; display: inline-block; background-color: #0ea5e9; margin-top: 0;">Pagar Ahora</a>`;
+          }
+
+          // 4. Inyectamos la fila completa
           const fila = `<tr>
             <td><strong>${fechaFormateada}</strong></td>
             <td>${orden.external_id}</td>
             <td>${orden.concepto}</td>
             <td>$${orden.monto}</td>
             <td><span class="status-badge ${badgeClass}">${orden.estado}</span></td>
-          </tr>`;
+            <td>${accionHtml}</td> </tr>`;
           
           tbody.innerHTML += fila;
         });
