@@ -9,30 +9,41 @@ const prisma = new PrismaClient();
 // ==========================================
 
 // 1. REGISTRO DE VENDEDOR (Onboarding simple B2B)
+// 1. REGISTRO DE VENDEDOR (Onboarding simple B2B)
 router.post('/vendedores', async (req, res) => {
   try {
     const { mp_email, mp_access_token } = req.body;
+    
+    // ✨ LÓGICA NUEVA: Leemos la API Key que viene del Index.html
+    const apiKey = req.headers['x-api-key'] as string;
 
     if (!mp_email || !mp_access_token) {
       return res.status(400).json({ error: "Faltan datos obligatorios (email o token)" });
     }
-
-    // Buscamos tu Cliente (Tenant) principal en la BD para asociarlo
-    const primerCliente = await prisma.client.findFirst();
-    if (!primerCliente) {
-      return res.status(500).json({ error: "No hay ningún Client (Tenant) creado en la base de datos." });
+    
+    if (!apiKey) {
+      return res.status(401).json({ error: "Falta X-API-Key en los headers" });
     }
 
-    // Creamos el vendedor impactando en tu tabla Vendor
+    // ✨ LÓGICA NUEVA: Buscamos exactamente el Cliente dueño de esa API Key
+    const clienteReal = await prisma.client.findFirst({
+      where: { api_key: apiKey }
+    });
+
+    if (!clienteReal) {
+      return res.status(401).json({ error: "API Key inválida. No se encontró tu Cliente en la BD." });
+    }
+
+    // Creamos el vendedor atándolo al cliente correcto
     const nuevoVendedor = await prisma.vendor.create({
       data: {
         mp_email: mp_email,
         mp_access_token: mp_access_token,
-        client_id: primerCliente.id
+        client_id: clienteReal.id // Usamos el ID real de tu cliente
       }
     });
 
-    console.log(`✅ [PoC] Vendedor creado con ID: ${nuevoVendedor.id}`);
+    console.log(`✅ [PoC] Vendedor creado con ID: ${nuevoVendedor.id} para el cliente ${clienteReal.client_id}`);
     res.status(201).json({ mensaje: "Vendedor registrado", data: nuevoVendedor });
 
   } catch (error) {
