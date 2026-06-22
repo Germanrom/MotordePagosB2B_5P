@@ -56,6 +56,7 @@ app.get('/health', (req, res) => {
 
 // --- 🛡️ VERSIÓN 1 (Intacta para clientes actuales) ---
 app.use('/v1/auth', authRoutesV1);
+app.use('/auth', authRoutesV1);    // ✨ EL PARCHE: Este es el alias exacto que Mercado Pago está buscando
 app.use('/v1/ordenes', orderRoutesV1);
 app.use('/v1/webhook', webhookRoutesV1);
 
