@@ -11,7 +11,7 @@ Este directorio reúne la descripción funcional, técnica y operativa del motor
 | [API V2](./api-v2.md) | OAuth, pagos Brick, consulta de órdenes, webhooks y callbacks. |
 | [Contrato OpenAPI V2](./openapi-v2.yaml) | Especificación OpenAPI 3.1 para clientes y herramientas. |
 | [Integración de un tenant](./integracion-tenant.md) | Alta de Client, conexión OAuth, configuración del Brick y callbacks. |
-| [Prueba simple de Mercado Pago](./pruebas-mercado-pago-no-tecnico.md) | Instrucciones sin jerga técnica para acompañar una compra de prueba. |
+| [Preparar Mercado Pago para pruebas](./pruebas-mercado-pago-no-tecnico.md) | Crear una cuenta vendedora de prueba, vincularla al sitio y hacer una compra simulada sin conocimientos técnicos. |
 | [Entorno local con Docker](./desarrollo-local-docker.md) | PostgreSQL local en Docker y API ejecutándose en el host. |
 | [Compatibilidad V1](./compatibilidad-v1.md) | Contrato existente, deprecación y migración gradual. |
 | [Datos y migraciones](./datos-y-migraciones.md) | Modelos Prisma, restricciones, migración aditiva y carga de credenciales. |
