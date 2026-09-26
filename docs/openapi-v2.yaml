@@ -1,0 +1,258 @@
+openapi: 3.1.0
+info:
+  title: FivePeaks Payment Engine API
+  version: 2.0.0
+  description: >-
+    Tenant-scoped API for Mercado Pago OAuth, Brick payments, order status,
+    and incoming Mercado Pago payment notifications.
+servers:
+  - url: https://{host}
+    variables:
+      host:
+        default: payments.example.com
+security:
+  - TenantApiKey: []
+paths:
+  /v2/auth/mp-url:
+    get:
+      operationId: startMercadoPagoOAuth
+      summary: Start Mercado Pago account linking for the authenticated tenant
+      responses:
+        '200':
+          description: Authorization URL created; OAuth state is persisted and expires after ten minutes.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [auth_url]
+                properties:
+                  auth_url:
+                    type: string
+                    format: uri
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503':
+          description: Mercado Pago OAuth is not configured.
+  /v2/auth/account:
+    get:
+      operationId: getMercadoPagoAccount
+      summary: Read the active Mercado Pago account's public connection details
+      responses:
+        '200':
+          description: Connection status and Brick public key; no access or refresh tokens are returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connected, public_key, expires_at]
+                properties:
+                  connected: { type: boolean }
+                  public_key: { type: [string, 'null'] }
+                  expires_at: { type: [string, 'null'], format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /v2/auth/callback:
+    get:
+      operationId: completeMercadoPagoOAuth
+      summary: Mercado Pago OAuth redirect endpoint
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema: { type: string }
+        - name: state
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '302': { description: Redirects to the tenant's configured redirect URI after linking. }
+        '400': { description: Invalid, expired, consumed, or denied OAuth callback. }
+        '409': { description: Mercado Pago account is already linked to another tenant. }
+        '502': { description: Could not complete authorization with Mercado Pago. }
+  /v2/pagos/brick:
+    post:
+      operationId: createBrickPayment
+      summary: Create a payment using the active Mercado Pago account for the authenticated tenant
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 128 }
+          description: Reuse the same key and body when retrying the same payment attempt.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrickPaymentRequest'
+      responses:
+        '200':
+          description: Payment operation and current provider status.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/ProviderError' }
+  /v2/ordenes/{id}/estado:
+    get:
+      operationId: getOrderStatus
+      summary: Get an order by ID within the authenticated tenant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Current order and latest payment attempt.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Order does not exist for this tenant. }
+  /v2/webhook/mercadopago:
+    post:
+      operationId: receiveMercadoPagoWebhook
+      summary: Receive and reconcile a Mercado Pago payment notification
+      description: >-
+        Public provider endpoint. account_id selects the persisted Vendor account;
+        signature validation and provider resource lookup determine whether the event is trusted.
+      security: []
+      parameters:
+        - name: account_id
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+          description: Internal Vendor ID configured as the notification account selector.
+        - name: data.id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: x-request-id
+          in: header
+          required: true
+          schema: { type: string }
+        - name: x-signature
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type: { type: string }
+                action: { type: string }
+                data:
+                  type: object
+                  properties:
+                    id: { type: [string, number] }
+      responses:
+        '200': { description: Event accepted, ignored, or already processed. }
+        '400': { description: Invalid webhook request or mismatched resource IDs. }
+        '403': { description: Invalid Mercado Pago signature. }
+        '404': { description: Account selector does not match a persisted account. }
+        '503': { description: Event could not be persisted or reconciled yet; provider may retry. }
+components:
+  securitySchemes:
+    TenantApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    BrickPaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [external_id, concepto, transaction_amount, token, installments, payment_method_id, payer]
+      properties:
+        external_id: { type: string, minLength: 1, maxLength: 128 }
+        concepto: { type: string, minLength: 1, maxLength: 256 }
+        transaction_amount: { type: number, exclusiveMinimum: 0, maximum: 100000000, multipleOf: 0.01 }
+        currency_id: { type: string, const: ARS, default: ARS }
+        token: { type: string, minLength: 1, maxLength: 512 }
+        installments: { type: integer, minimum: 1, maximum: 24 }
+        payment_method_id: { type: string, minLength: 1, maxLength: 64 }
+        issuer_id: { oneOf: [{ type: string, maxLength: 64 }, { type: integer }, { type: 'null' }] }
+        payer:
+          type: object
+          additionalProperties: false
+          required: [email]
+          properties:
+            email: { type: string, format: email, maxLength: 254 }
+            identification:
+              type: object
+              additionalProperties: false
+              required: [type, number]
+              properties:
+                type: { type: string, maxLength: 16 }
+                number: { type: string, maxLength: 32 }
+            first_name: { type: string, maxLength: 100 }
+            last_name: { type: string, maxLength: 100 }
+    PaymentResponse:
+      type: object
+      required: [id_pago, id_orden, external_id, estado, status_detail, mp_payment_id]
+      properties:
+        id_pago: { type: string, format: uuid }
+        id_orden: { type: string, format: uuid }
+        external_id: { type: string }
+        estado: { $ref: '#/components/schemas/PaymentStatus' }
+        status_detail: { type: [string, 'null'] }
+        mp_payment_id: { type: [string, 'null'] }
+    OrderStatus:
+      type: object
+      required: [id_orden, external_id, estado, mp_payment_id, updated_at, ultimo_pago]
+      properties:
+        id_orden: { type: string, format: uuid }
+        external_id: { type: string }
+        estado: { $ref: '#/components/schemas/PaymentStatus' }
+        mp_payment_id: { type: [string, 'null'] }
+        updated_at: { type: string, format: date-time }
+        ultimo_pago:
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [id_pago, estado, status_detail, mp_payment_id]
+              properties:
+                id_pago: { type: string, format: uuid }
+                estado: { $ref: '#/components/schemas/PaymentStatus' }
+                status_detail: { type: [string, 'null'] }
+                mp_payment_id: { type: [string, 'null'] }
+    PaymentStatus:
+      type: string
+      enum: [pending, approved, rejected, cancelled, refunded, charged_back]
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string }
+        message: { type: string }
+  responses:
+    BadRequest:
+      description: Invalid or missing request header.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: API key is missing or invalid.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Tenant, order, account, or idempotency conflict.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UnprocessableEntity:
+      description: Brick input was invalid or Mercado Pago did not accept the payment.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ProviderError:
+      description: Provider error, mismatch, or unsupported status.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

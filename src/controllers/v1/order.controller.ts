@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import prisma from '../../config/prisma';
+import { decryptConfiguredSecret } from '../../services/security/secret-crypto';
 
 const createOrderSchema = z.object({
   vendor_id: z.number(),
@@ -45,7 +46,7 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
     });
 
     // 5. Crear la preferencia en MP usando el access_token del Vendor real
-    const mpClient = new MercadoPagoConfig({ accessToken: vendor.mp_access_token });
+    const mpClient = new MercadoPagoConfig({ accessToken: decryptConfiguredSecret(vendor.mp_access_token) });
     const preference = new Preference(mpClient);
 
     // ✨ CORRECCIÓN: Dominio real y ruta completa del Webhook en Render
@@ -92,6 +93,9 @@ export const createOrder = async (req: Request, res: Response): Promise<any> => 
     });
 
   } catch (error: any) {
+    if (error?.code === 'P2002') {
+      return res.status(409).json({ error: 'external_id_conflict', message: 'external_id ya fue utilizado por este cliente' });
+    }
     console.error('Error en createOrder:', error.message || error);
     return res.status(500).json({ error: 'Error interno del servidor al crear la orden' });
   }

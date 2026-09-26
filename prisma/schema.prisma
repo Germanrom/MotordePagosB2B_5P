@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,49 +8,159 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// Client is the persisted tenant identity. The API layer calls this context Tenant.
 model Client {
   id             String   @id @default(uuid())
-  client_id      String   @unique // Ej. "ENUAR"
-  api_key        String   // Hash o string plano según se prefiera para X-API-Key
-  callback_url   String   // A donde mandar el webhook de vinculación exitosa
-  redirect_uri   String   // A donde redirigir al usuario tras la vinculación
-  webhook_secret String   // Secreto HMAC para firmar webhooks al cliente
+  client_id      String   @unique
+  api_key        String?  // Legacy plaintext value; cleared by scripts/migrate_credentials.ts.
+  api_key_hash   String?  @unique
+  callback_url   String
+  redirect_uri   String
+  webhook_secret String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   vendors        Vendor[]
   orders         Order[]
+  oauth_states   OAuthState[]
+  payments       Payment[]
+  webhook_events WebhookEvent[]
+  callback_deliveries CallbackDelivery[]
 }
 
+// Vendor remains the V1-compatible name for a connected MP account.
 model Vendor {
   id               Int      @id @default(autoincrement())
   mp_access_token  String
   mp_refresh_token String?
   mp_email         String?
+  mp_user_id       String?
+  mp_public_key    String?
+  mp_expires_at    DateTime?
+  v2_active        Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   client_id        String
-  client           Client   @relation(fields: [client_id], references: [id])
-  
+  client           Client   @relation(fields: [client_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
   orders           Order[]
+  payments         Payment[]
+  webhook_events   WebhookEvent[]
+
+  @@index([client_id])
+  @@index([mp_user_id])
+  @@unique([id, client_id])
 }
 
 model Order {
-  id             String   @id @default(uuid())
-  external_id    String   // ID del carrito en el sistema del cliente
-  monto          Float
-  moneda         String   @default("ARS")
-  concepto       String
-  estado         String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
-  mp_payment_id  String?  // ID del pago en Mercado Pago una vez aprobado
-  checkout_url   String?  // URL para redirigir al usuario a pagar
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id               String   @id @default(uuid())
+  external_id      String
+  monto            Decimal  @db.Decimal(18, 2)
+  moneda           String   @default("ARS")
+  concepto         String
+  estado           String   @default("PENDING")
+  mp_payment_id    String?  // Kept for the V1 response contract; Payment is authoritative for attempts.
+  checkout_url     String?
+  last_payment_id  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  vendor_id      Int
-  vendor         Vendor   @relation(fields: [vendor_id], references: [id])
-  
+  vendor_id        Int
+  vendor           Vendor   @relation(fields: [vendor_id, client_id], references: [id, client_id], onDelete: Restrict, onUpdate: Cascade, map: "Order_vendor_client_fkey")
+  client_id        String
+  client           Client   @relation(fields: [client_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payments         Payment[]
+
+  @@unique([client_id, external_id])
+  @@unique([id, client_id, vendor_id])
+  @@index([client_id, createdAt])
+  @@index([vendor_id, createdAt])
+}
+
+model Payment {
+  id                         String   @id @default(uuid())
+  order_id                   String
+  client_id                  String
+  vendor_id                  Int
+  idempotency_key            String
+  request_fingerprint        String
+  provider_idempotency_key   String   @unique
+  provider_payment_id        String?  @unique
+  estado                     String   @default("PENDING")
+  status_detail              String?
+  monto                      Decimal  @db.Decimal(18, 2)
+  moneda                     String
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  order                      Order    @relation(fields: [order_id, client_id, vendor_id], references: [id, client_id, vendor_id], onDelete: Restrict, onUpdate: Cascade, map: "Payment_order_client_vendor_fkey")
+  client                     Client   @relation(fields: [client_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vendor                     Vendor   @relation(fields: [vendor_id, client_id], references: [id, client_id], onDelete: Restrict, onUpdate: Cascade, map: "Payment_vendor_client_fkey")
+  webhook_events             WebhookEvent[]
+  callback_deliveries        CallbackDelivery[]
+
+  @@unique([client_id, idempotency_key])
+  @@unique([id, client_id])
+  @@index([order_id, createdAt])
+  @@index([client_id, createdAt])
+}
+
+model OAuthState {
+  id          String   @id @default(uuid())
+  state_hash  String   @unique
+  client_id   String
+  expires_at  DateTime
+  consumed_at DateTime?
+  createdAt   DateTime @default(now())
+
+  client      Client   @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([expires_at])
+}
+
+model WebhookEvent {
+  id             String   @id @default(uuid())
+  request_id     String   @unique
   client_id      String
-  client         Client   @relation(fields: [client_id], references: [id])
+  vendor_id      Int
+  payment_id     String?
+  resource_id    String
+  event_type     String
+  payload        Json
+  estado         String   @default("RECEIVED")
+  attempts       Int      @default(0)
+  next_attempt_at DateTime @default(now())
+  locked_until   DateTime?
+  last_error     String?
+  received_at    DateTime @default(now())
+  processed_at   DateTime?
+
+  client         Client   @relation(fields: [client_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vendor         Vendor   @relation(fields: [vendor_id, client_id], references: [id, client_id], onDelete: Restrict, onUpdate: Cascade, map: "WebhookEvent_vendor_client_fkey")
+  payment        Payment? @relation(fields: [payment_id, client_id], references: [id, client_id], onDelete: Restrict, onUpdate: Cascade, map: "WebhookEvent_payment_client_fkey")
+
+  @@index([estado, next_attempt_at])
+  @@index([client_id, received_at])
+}
+
+model CallbackDelivery {
+  id             String   @id @default(uuid())
+  event_key      String   @unique
+  client_id      String
+  payment_id     String
+  callback_url   String
+  payload        Json
+  signature      String
+  estado         String   @default("PENDING")
+  attempts       Int      @default(0)
+  next_attempt_at DateTime @default(now())
+  locked_until   DateTime?
+  last_error     String?
+  createdAt      DateTime @default(now())
+  delivered_at   DateTime?
+
+  client         Client   @relation(fields: [client_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payment        Payment  @relation(fields: [payment_id, client_id], references: [id, client_id], onDelete: Restrict, onUpdate: Cascade, map: "CallbackDelivery_payment_client_fkey")
+
+  @@index([estado, next_attempt_at])
 }

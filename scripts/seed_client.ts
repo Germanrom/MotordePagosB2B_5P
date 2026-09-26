@@ -1,25 +1,31 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { createHash } from 'node:crypto';
+import { encryptConfiguredSecret } from '../src/services/security/secret-crypto';
 
 const prisma = new PrismaClient({});
 
 async function main() {
-  const apiKeyMaestra = process.env.MI_API_KEY_MAESTRA?.replace(/"/g, '') || 'super_secreto_motor_pagos_2026_5P';
+  const apiKeyMaestra = process.env.MI_API_KEY_MAESTRA;
+  const webhookSecret = process.env.SEED_WEBHOOK_SECRET;
+  const callbackUrl = process.env.SEED_CALLBACK_URL;
+  const redirectUri = process.env.SEED_REDIRECT_URI;
+  if (!apiKeyMaestra || !webhookSecret || !callbackUrl || !redirectUri) throw new Error('Set MI_API_KEY_MAESTRA, SEED_WEBHOOK_SECRET, SEED_CALLBACK_URL, and SEED_REDIRECT_URI');
+  const apiKeyHash = createHash('sha256').update(apiKeyMaestra).digest('hex');
 
-  const newClient = await prisma.client.create({
-    data: {
+  const newClient = await prisma.client.upsert({
+    where: { client_id: 'ENUAR' },
+    create: {
       client_id: 'ENUAR',
-      api_key: apiKeyMaestra, // Usamos tu clave actual para no romper tus pruebas
-      callback_url: 'https://centroenuar.com/functions/v1/mp-vincular-callback',
-      redirect_uri: 'https://centroenuar.com/admin/settings',
-      webhook_secret: 'mi_secreto_hmac_123', // Este es un secreto de prueba para las firmas
+      api_key_hash: apiKeyHash,
+      callback_url: callbackUrl,
+      redirect_uri: redirectUri,
+      webhook_secret: encryptConfiguredSecret(webhookSecret),
     },
+    update: { api_key_hash: apiKeyHash, api_key: null, callback_url: callbackUrl, redirect_uri: redirectUri, webhook_secret: encryptConfiguredSecret(webhookSecret) },
   });
 
-  console.log('✅ Cliente "centroenuar" insertado con éxito:');
-  console.log(newClient);
+  console.log(`Seeded tenant ${newClient.client_id} (id ${newClient.id}); credentials were not printed.`);
 }
 
 main()
