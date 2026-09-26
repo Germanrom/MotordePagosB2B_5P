@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../../config/prisma';
 import axios from 'axios';
 import { createHmacSignature } from '../../utils/hmac';
+import { encryptConfiguredSecret, decryptConfiguredSecret } from '../../services/security/secret-crypto';
 
 export const getMpUrl = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -103,16 +104,16 @@ export const mpCallback = async (req: Request, res: Response): Promise<any> => {
       vendor = await prisma.vendor.update({
         where: { id: vendor.id },
         data: {
-          mp_access_token: tokens.access_token,
-          mp_refresh_token: tokens.refresh_token,
+          mp_access_token: encryptConfiguredSecret(tokens.access_token),
+          mp_refresh_token: tokens.refresh_token ? encryptConfiguredSecret(tokens.refresh_token) : null,
           mp_email: mpEmailSeguro,
         }
       });
     } else {
       vendor = await prisma.vendor.create({
         data: {
-          mp_access_token: tokens.access_token,
-          mp_refresh_token: tokens.refresh_token,
+          mp_access_token: encryptConfiguredSecret(tokens.access_token),
+          mp_refresh_token: tokens.refresh_token ? encryptConfiguredSecret(tokens.refresh_token) : null,
           client_id: client.id,
           mp_email: mpEmailSeguro,
         }
@@ -130,7 +131,7 @@ export const mpCallback = async (req: Request, res: Response): Promise<any> => {
       error_msg: null,
     };
 
-    const signature = createHmacSignature(payload, client.webhook_secret);
+    const signature = createHmacSignature(payload, decryptConfiguredSecret(client.webhook_secret));
 
     try {
       await axios.post(client.callback_url, payload, {

@@ -1,5 +1,7 @@
 # 🔍 Análisis Técnico — Motor de Pagos B2B
 
+> Documento histórico de una revisión anterior a V2 multi-tenant. Puede contener observaciones ya corregidas. La documentación vigente está en [`docs/README.md`](docs/README.md).
+
 ## ¿Qué es este proyecto?
 
 Un **motor de pagos B2B multi-tenant** que actúa como intermediario entre sistemas cliente (ej. `centroenuar`) y Mercado Pago. Maneja el flujo OAuth de vinculación de cuentas MP, la creación de preferencias de pago, y la recepción/reenvío de webhooks de pago.
