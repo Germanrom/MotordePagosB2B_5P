@@ -13,7 +13,7 @@ Este directorio reúne la descripción funcional, técnica y operativa del motor
 | [Integración de un tenant](./integracion-tenant.md) | Alta de Client, conexión OAuth, configuración del Brick y callbacks. |
 | [Preparar Mercado Pago para pruebas](./pruebas-mercado-pago-no-tecnico.md) | Crear una cuenta vendedora de prueba, vincularla al sitio y hacer una compra simulada sin conocimientos técnicos. |
 | [Entorno local con Docker](./desarrollo-local-docker.md) | PostgreSQL local en Docker y API ejecutándose en el host. |
-| [Compatibilidad V1](./compatibilidad-v1.md) | Contrato existente, deprecación y migración gradual. |
+| [Compatibilidad V1](./compatibilidad-v1.md) | Contrato de links de pago Checkout Pro y diferencias con V2/Brick. |
 | [Datos y migraciones](./datos-y-migraciones.md) | Modelos Prisma, restricciones, migración aditiva y carga de credenciales. |
 | [Seguridad y operación](./seguridad-y-operacion.md) | Configuración, ejecución, despliegue, secretos, workers y respuesta operativa. |
 | [Estado y pendientes](./estado-y-pendientes.md) | Qué está implementado, qué requiere preparación y prioridades para endurecer el sistema. |

@@ -4,7 +4,7 @@ Este documento diferencia lo que está en el código de lo que todavía hace fal
 
 ## Implementado en la rama
 
-- V2 está montada para nuevas integraciones; V1 sigue viva con headers de deprecación y alias `/auth`.
+- V1 crea links de pago con Checkout Pro y devuelve `checkout_url`; V2 procesa pagos con Payment Brick. Ambas versiones están activas y V1 mantiene el alias `/auth`.
 - Las rutas/página de prueba `/api/poc` se retiraron.
 - Middleware de API key compartido entre V1 y V2; hash de API keys con fallback de transición desde texto plano.
 - Tenant persistido como `Client`; `Vendor` conserva el nombre y los registros históricos.
@@ -47,7 +47,7 @@ No se aplicó la migración a una base real durante esta implementación.
 ### P1 — Endurecimiento y compatibilidad
 
 - Implementar refresh seguro de access tokens usando `mp_refresh_token`, o definir una política operativa de re-vinculación antes de expiración. El código actual bloquea nuevos pagos si `mp_expires_at` venció.
-- Cambiar OAuth V1 a un flujo de salida controlada: aún construye `state` predecible y callback URL hardcodeada. V1 sigue deprecated, pero estos endpoints continúan activos.
+- Cambiar OAuth V1 a un flujo de salida controlada: aún construye `state` predecible y callback URL hardcodeada.
 - Hacer durable el callback de vinculación OAuth; actualmente su fallo solo se registra y no se reintenta.
 - Resolver la carrera entre dos OAuth simultáneos que intenten asociar la misma cuenta MP a tenants diferentes. El chequeo `linkedElsewhere` está en aplicación, pero `mp_user_id` no tiene unicidad global de base para preservar compatibilidad con V1.
 - Agregar FK compuesta para `Order.last_payment_id` y definir checks/enum para estados e importes. Hoy `last_payment_id` es una columna de lectura rápida sin relación referencial.

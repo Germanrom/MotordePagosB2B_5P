@@ -21,7 +21,6 @@ src/
 ├── routes/v1|v2/                    # Mapeo de path + middleware + controlador
 ├── controllers/v1|v2/               # Adaptación HTTP y códigos de respuesta
 ├── middlewares/auth.ts              # API key compartida por ambas versiones
-├── middlewares/v1/deprecated.ts     # Encabezados de deprecación
 ├── services/payments/               # Creación, reconciliación y outbox
 ├── services/mercadopago/            # OAuth state y firma del webhook MP
 ├── services/security/               # Hashes, HMAC y cifrado de credenciales
@@ -36,10 +35,10 @@ Las rutas V1 y V2 reexportan el mismo middleware de API key. La capa de pago usa
 | Prefijo | Router |
 |---|---|
 | `/v1/auth` y alias `/auth` | OAuth legado y callback V1 |
-| `/v1/ordenes` | Crear preferencia y consultar estado V1 |
+| `/v1/ordenes` | Crear preferencia Checkout Pro y devolver link de pago; consultar estado |
 | `/v1/webhook` | Webhook compatible con notificaciones V1 |
 | `/v2/auth` | Inicio y callback OAuth V2 |
-| `/v2/pagos` | Pago Brick V2 |
+| `/v2/pagos` | Pago con Payment Brick |
 | `/v2/ordenes` | Consulta tenant-scoped de estado V2 |
 | `/v2/webhook` | Reconciliación de eventos V2 |
 

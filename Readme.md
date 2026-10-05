@@ -4,8 +4,9 @@ API multi-tenant que conecta plataformas cliente con Mercado Pago. Cada tenant o
 
 ## Estado
 
-- **V2 es la versión para integraciones nuevas.** El flujo disponible usa Payment Brick.
-- **V1 está deprecated**, pero sigue activa durante la migración de integraciones existentes. No hay fecha de apagado definida.
+- **V1 crea links de pago** con preferencias de Checkout Pro y devuelve `checkout_url`.
+- **V2 procesa pagos con Payment Brick** cuando la experiencia de pago ocurre dentro de la plataforma integrada.
+- Ambas versiones están activas; V1 no se anuncia como obsoleta.
 - `/api/poc` fue retirado.
 - Las suscripciones recurrentes y las comisiones por transacción están fuera del alcance actual.
 
@@ -29,4 +30,4 @@ La infraestructura local usa PostgreSQL en Docker y ejecuta la API en el host. S
 
 ## Documentación histórica
 
-El detalle de las rutas V1 y su compatibilidad está en [docs/compatibilidad-v1.md](docs/compatibilidad-v1.md). El análisis previo del sistema está en [analysis_motor_pagos.md](analysis_motor_pagos.md) y no describe necesariamente el comportamiento actual.
+El detalle de las rutas y diferencias entre V1 y V2 está en [docs/compatibilidad-v1.md](docs/compatibilidad-v1.md). El análisis previo del sistema está en [analysis_motor_pagos.md](analysis_motor_pagos.md) y no describe necesariamente el comportamiento actual.

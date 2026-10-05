@@ -4,7 +4,6 @@ import cors from 'cors';
 import authRoutesV1 from './routes/v1/auth.routes';
 import orderRoutesV1 from './routes/v1/order.routes';
 import webhookRoutesV1 from './routes/v1/webhook.routes';
-import { markV1Deprecated } from './middlewares/v1/deprecated';
 import authRoutesV2 from './routes/v2/auth.routes';
 import pagosRoutesV2 from './routes/v2/pago.routes';
 import orderRoutesV2 from './routes/v2/orden.routes';
@@ -30,12 +29,10 @@ app.use(cors({
 app.use(express.json({ limit: '64kb' }));
 
 app.get('/', (_req, res) => {
-  res.json({ status: 'ok', mensaje: 'Motor de Pagos B2B operando', version: 'V2 activa; V1 deprecated' });
+  res.json({ status: 'ok', mensaje: 'Motor de Pagos B2B operando', version: 'V1 links de pago; V2 Payment Brick' });
 });
 app.get('/health', (_req, res) => res.json({ status: 'ok', message: 'Motor de Pagos (Node.js) is running!' }));
 
-app.use('/v1', markV1Deprecated);
-app.use('/auth', markV1Deprecated);
 app.use('/v1/auth', authRoutesV1);
 app.use('/auth', authRoutesV1);
 app.use('/v1/ordenes', orderRoutesV1);

@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import test from 'node:test';
 import { close, listen } from '../helpers/http-server';
 
-test('public API contract exposes health, security headers, V1 deprecation, and no POC route', async () => {
+test('public API contract exposes health, security headers, active V1 routes, and no POC route', async () => {
   const { app } = await import('../../src/app');
   const server = createServer(app);
   const baseUrl = await listen(server);
@@ -15,9 +15,9 @@ test('public API contract exposes health, security headers, V1 deprecation, and 
     assert.equal(health.headers.get('x-frame-options'), 'DENY');
     assert.equal(health.headers.get('referrer-policy'), 'no-referrer');
 
-    const deprecated = await fetch(`${baseUrl}/v1/ordenes`, { method: 'POST' });
-    assert.ok(deprecated.headers.get('deprecation'));
-    assert.ok(deprecated.headers.get('x-api-deprecation-info'));
+    const v1 = await fetch(`${baseUrl}/v1/ordenes`, { method: 'POST' });
+    assert.equal(v1.headers.get('deprecation'), null);
+    assert.equal(v1.headers.get('x-api-deprecation-info'), null);
 
     const poc = await fetch(`${baseUrl}/api/poc`);
     assert.equal(poc.status, 404);

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Motor de Pagos B2B",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Germanrom/MotordePagosB2B_5P",
+      "provider": "github",
+      "revision": "4b94347f3c01e5efccc6effa7ada354d8a970eea"
+    },
+    "views": [
+      { "id": "cobro", "label": "Cobro", "focus": ["merchant", "http", "services", "mercadopago", "postgres"], "note": "Solicitud tenant-scoped, operación de pago y persistencia." },
+      { "id": "webhooks", "label": "Webhooks y callbacks", "focus": ["mercadopago", "http", "postgres", "callback"], "note": "Recepción, reintentos y entrega durable al tenant." }
+    ]
+  },
+  "components": [
+    { "id": "merchant", "type": "external", "label": "Sistemas del tenant", "sublabel": "Integración B2B", "pos": [40, 300], "size": [155, 70], "sources": [{ "path": "docs/integracion-tenant.md", "label": "Contrato" }] },
+    { "id": "http", "type": "backend", "label": "API Express + workers", "sublabel": "V1 link de pago · V2 Payment Brick", "pos": [280, 300], "size": [205, 82], "sources": [{ "path": "src/app.ts", "label": "Rutas" }, { "path": "src/index.ts", "label": "Proceso" }] },
+    { "id": "services", "type": "backend", "label": "Servicios de pago", "sublabel": "Brick · OAuth · reconciliación", "pos": [550, 300], "size": [190, 76], "sources": [{ "path": "src/services/payments/brick-payment.service.ts", "label": "Brick" }, { "path": "src/services/mercadopago/oauth.service.ts", "label": "OAuth" }] },
+    { "id": "mercadopago", "type": "external", "label": "Mercado Pago", "sublabel": "API de pagos y OAuth", "pos": [860, 300], "size": [175, 76], "sources": [{ "path": "docs/arquitectura.md", "label": "Integración" }] },
+    { "id": "postgres", "type": "database", "label": "PostgreSQL", "sublabel": "Prisma · datos multi-tenant", "pos": [550, 530], "size": [190, 76], "sources": [{ "path": "prisma/schema.prisma", "label": "Modelo" }] },
+    { "id": "callback", "type": "external", "label": "Receptor del tenant", "sublabel": "Callback firmado", "pos": [280, 530], "size": [190, 76], "sources": [{ "path": "docs/arquitectura.md", "label": "Entrega" }] }
+  ],
+  "connections": [
+    { "id": "tenant-request", "from": "merchant", "to": "http", "label": "API key · HTTP", "variant": "emphasis" },
+    { "id": "http-services", "from": "http", "to": "services", "label": "rutas V1 / V2", "labelDy": -35 },
+    { "id": "provider-api", "from": "services", "to": "mercadopago", "label": "pagos · OAuth · consulta", "variant": "emphasis", "labelDy": -32 },
+    { "id": "incoming-webhook", "from": "mercadopago", "to": "http", "label": "webhook firmado", "variant": "security", "fromSide": "top", "toSide": "top" },
+    { "id": "service-data", "from": "services", "to": "postgres", "label": "órdenes · pagos · eventos", "labelDy": 24 },
+    { "id": "runtime-data", "from": "http", "to": "postgres", "label": "workers reclaman outbox", "fromSide": "bottom", "toSide": "left" },
+    { "id": "outbound-callback", "from": "http", "to": "callback", "label": "callback HMAC · reintentos", "fromSide": "left", "toSide": "top", "labelDy": 24, "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Contratos de pago", "items": ["V1 /v1/ordenes crea una preferencia Checkout Pro y devuelve checkout_url", "V2 /v2/pagos/brick recibe el token de Payment Brick"] },
+    { "dot": "emerald", "title": "Cuenta y datos", "items": ["La API key resuelve el Client persistido", "V2 usa la cuenta activa del tenant", "PostgreSQL guarda órdenes, pagos e idempotencia"] },
+    { "dot": "amber", "title": "Eventos", "items": ["WebhookEvent y CallbackDelivery persisten entregas", "Workers del proceso HTTP reintentan desde PostgreSQL", "Callbacks firmados se entregan al menos una vez"] }
+  ]
+}
