@@ -48,3 +48,11 @@ Los cambios programados necesitan un worker y una conciliación con Mercado Pago
 FivePeaks envía callbacks firmados a `subscription_callback_url` con `event_id` estable. Eventos previstos: `subscription.authorized`, `subscription.payment_approved`, `subscription.payment_rejected`, `subscription.payment_recovered`, `subscription.plan_changed` y `subscription.cancelled`. Cada evento incluye `subscription_id`, `external_tenant_id`, `plan_code`, `plan_version`, importe, moneda, ID de factura y período cuando correspondan. Los callbacks son *at least once*: la app debe deduplicar `event_id` antes de aplicar efectos.
 
 El retorno del navegador no emite ni reemplaza un callback de pago. Los eventos de Mercado Pago son disparadores: FivePeaks consulta `/preapproval/{id}`, `/authorized_payments/{id}` y `/v1/payments/{id}` según el tópico y comprueba que la cuenta cobradora, referencia, importe y moneda correspondan a la suscripción local.
+
+### Implementado en fase 2
+
+`POST /v2/subscriptions/webhook/mercadopago` valida `x-signature` y `x-request-id` con `MP_SAAS_WEBHOOK_SECRET`, persiste el aviso y responde `200` ante duplicados ya procesados. Acepta `subscription_preapproval`, `subscription_authorized_payment` y `payment`. Un fallo transitorio responde `503` y queda registrado para reintento. El webhook de suscripciones no usa `account_id` de `Vendor`.
+
+`subscription.authorized` confirma que Mercado Pago autorizó la suscripción, con `payment_confirmed: false`. **La app no debe habilitar acceso basándose en ese evento.** `subscription.payment_approved` con `first_payment: true` se emite solo después de consultar una factura y un pago `approved`, comprobar que ambos corresponden a la cuenta y suscripción local, y recibir `next_payment_date` posterior al cobro. Un primer pago rechazado genera `subscription.payment_rejected` y conserva el estado sin activar.
+
+La entrega usa el secreto `Client.webhook_secret` y las cabeceras `x-motor-signature`, `x-motor-event-id` e `Idempotency-Key`. La app verifica la firma y deduplica `event_id`; los reintentos pueden repetir la misma entrega. Los eventos y callbacks tienen tablas propias y workers con recuperación tras reinicio. Los callbacks de renovaciones, cambios y cancelaciones pertenecen a las fases 3 y 4.

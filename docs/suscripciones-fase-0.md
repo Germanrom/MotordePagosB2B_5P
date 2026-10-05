@@ -32,7 +32,7 @@ Consultar luego, y nuevamente después de cada intento de cobro:
 npm run subscriptions:probe -- inspect <preapproval-id>
 ```
 
-El comando consulta `/preapproval/{id}` y `/authorized_payments/search`; guardar la salida en un registro de prueba con el momento de consulta. Comprobar el pago concreto con `/v1/payments/{id}` antes de marcarlo como aprobado. Mercado Pago documenta eventos distintos para `subscription_preapproval`, `subscription_authorized_payment` y `payment`; deben observarse los tres en el webhook de prueba. [Notificaciones de suscripciones](https://www.mercadopago.com.ar/developers/es/docs/your-integrations/notifications/additional-info), [factura autorizada](https://www.mercadopago.com.ar/developers/es/reference/online-payments/subscriptions/get-authorized-payment/get).
+El comando consulta `/preapproval/{id}` y `/authorized_payments/search`; guardar la salida en un registro de prueba con el momento de consulta. Comprobar el pago concreto con `/v1/payments/{id}` antes de marcarlo como aprobado. Mercado Pago documenta eventos distintos para `subscription_preapproval`, `subscription_authorized_payment` y `payment`; deben observarse los tres en el webhook de prueba. Confirmar con el proveedor el método de registro de la URL de notificaciones de suscripciones, ya que su documentación distingue ese caso de la configuración común de webhooks. [Webhooks de Mercado Pago](https://www.mercadopago.com.ar/developers/es/docs/prestashop/additional-content/your-integrations/notifications/webhooks), [factura autorizada](https://www.mercadopago.com.ar/developers/es/reference/online-payments/subscriptions/get-authorized-payment/get).
 
 ## Registro de resultados
 

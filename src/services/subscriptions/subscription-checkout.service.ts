@@ -36,19 +36,19 @@ export const parseCheckoutInput = (value: unknown): CheckoutInput => {
   return result.data;
 };
 
-const providerToken = (): string => {
+export const saasProviderToken = (): string => {
   const encrypted = process.env.MP_SAAS_ACCESS_TOKEN_ENCRYPTED;
   if (!encrypted?.startsWith('enc:v1:')) throw new SubscriptionOperationError(503, 'saas_credentials_unavailable', 'FivePeaks subscription credentials are not configured');
   return decryptConfiguredSecret(encrypted);
 };
 
-const expectedCollector = (): string => {
+export const expectedSaasCollector = (): string => {
   const id = process.env.MP_SAAS_COLLECTOR_ID;
   if (!id || !/^\d+$/.test(id)) throw new SubscriptionOperationError(503, 'saas_credentials_unavailable', 'FivePeaks collector ID is not configured');
   return id;
 };
 
-const requestProvider = async (path: string, token: string, providerFetch: ProviderFetch, options?: { method: string; body: unknown }): Promise<MpSubscription> => {
+export const requestSaasProvider = async (path: string, token: string, providerFetch: ProviderFetch, options?: { method: string; body: unknown }): Promise<MpSubscription> => {
   const response = await providerFetch(mercadoPagoApiUrl(path), {
     method: options?.method ?? 'GET',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -96,8 +96,8 @@ export const createSubscriptionCheckout = async (
   if (new URL(input.return_url).origin !== new URL(client.redirect_uri).origin) {
     throw new SubscriptionOperationError(422, 'return_url_not_allowed', 'return_url must share the configured app origin');
   }
-  const token = providerToken();
-  const collectorId = expectedCollector();
+  const token = saasProviderToken();
+  const collectorId = expectedSaasCollector();
   const fingerprint = fingerprintRequest(input);
   let subscription = await db.saasSubscription.findUnique({ where: { client_id_idempotency_key: { client_id: client.id, idempotency_key: key } } });
   if (subscription && subscription.request_fingerprint !== fingerprint) {
@@ -134,10 +134,10 @@ export const createSubscriptionCheckout = async (
   if (!createdHere) {
     // A timeout may mean MP accepted the first POST. Search before considering any recovery.
     try {
-      const search = await requestProvider(`/preapproval/search?payer_email=${encodeURIComponent(input.payer_email)}`, token, providerFetch);
+      const search = await requestSaasProvider(`/preapproval/search?payer_email=${encodeURIComponent(input.payer_email)}`, token, providerFetch);
       const matches = (Array.isArray(search.results) ? search.results : []).filter((row: MpSubscription) => String(row.external_reference ?? '') === subscription!.id);
       if (matches.length === 1) {
-        const found = await requestProvider(`/preapproval/${encodeURIComponent(String(matches[0].id))}`, token, providerFetch);
+        const found = await requestSaasProvider(`/preapproval/${encodeURIComponent(String(matches[0].id))}`, token, providerFetch);
         assertProviderCheckoutMatches(found, subscription!, collectorId);
         subscription = await db.saasSubscription.update({ where: { id: subscription!.id }, data: {
           provider_preapproval_id: String(found.id), checkout_url: String(found.init_point), provider_status: String(found.status ?? ''), status: 'PENDING_CHECKOUT',
@@ -152,7 +152,7 @@ export const createSubscriptionCheckout = async (
 
   try {
     // Pending checkout without an MP plan is provisional until phase 0 validates billing dates.
-    const provider = await requestProvider('/preapproval', token, providerFetch, { method: 'POST', body: {
+    const provider = await requestSaasProvider('/preapproval', token, providerFetch, { method: 'POST', body: {
       reason: input.terms.description,
       external_reference: subscription!.id,
       payer_email: input.payer_email,

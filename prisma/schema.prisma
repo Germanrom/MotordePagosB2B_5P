@@ -212,7 +212,7 @@ model SaasBillingPeriod {
   subscription_id     String
   provider_invoice_id String?  @unique
   period_start        DateTime
-  period_end          DateTime
+  period_end          DateTime?
   amount              Decimal  @db.Decimal(18, 2)
   currency            String
   status              String   @default("PENDING")
