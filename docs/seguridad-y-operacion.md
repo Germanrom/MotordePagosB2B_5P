@@ -17,6 +17,10 @@
 | `SEED_WEBHOOK_SECRET` | Secreto de callback para `ENUAR` en el seed. |
 | `SEED_CALLBACK_URL` | Callback de `ENUAR` usado por el seed. |
 | `SEED_REDIRECT_URI` | Redirect de `ENUAR` usado por el seed. |
+| `SAAS_SUBSCRIPTIONS_CHECKOUT_ENABLED` | Habilita el alta SaaS solo después de aprobar la fase 0. Por defecto está desactivada. |
+| `MP_SAAS_ACCESS_TOKEN_ENCRYPTED` | Token de la cuenta cobradora FivePeaks, cifrado con `TOKEN_ENCRYPTION_KEY`; no es un token OAuth de `Vendor`. |
+| `MP_SAAS_COLLECTOR_ID` | User ID de la cuenta FivePeaks para verificar la respuesta de checkout. |
+| `MP_SAAS_TEST_ACCESS_TOKEN`, `MP_SAAS_TEST_PAYER_EMAIL`, `MP_SAAS_TEST_BACK_URL` | Credenciales y retorno exclusivos del ensayo de fase 0. |
 
 Los valores en `.env.example` son ejemplos. No usar secretos reales en ese archivo ni en Git. Generar API keys aleatorias de alta entropía y entregarlas una sola vez al tenant. La clave de cifrado no debe cambiar sin un proceso de rotación que descifre con la clave anterior y vuelva a cifrar con la nueva.
 

@@ -26,6 +26,10 @@ model Client {
   payments       Payment[]
   webhook_events WebhookEvent[]
   callback_deliveries CallbackDelivery[]
+  subscription_callback_url String?
+  saas_subscriptions SaasSubscription[]
+  saas_webhook_events SaasWebhookEvent[]
+  saas_callback_deliveries SaasCallbackDelivery[]
 }
 
 // Vendor remains the V1-compatible name for a connected MP account.
@@ -163,4 +167,123 @@ model CallbackDelivery {
   payment        Payment  @relation(fields: [payment_id, client_id], references: [id, client_id], onDelete: Restrict, onUpdate: Cascade, map: "CallbackDelivery_payment_client_fkey")
 
   @@index([estado, next_attempt_at])
+}
+
+// SaaS billing uses FivePeaks' own Mercado Pago account, never a Vendor account.
+model SaasSubscription {
+  id                      String    @id @default(uuid())
+  client_id               String
+  external_tenant_id      String
+  idempotency_key         String
+  request_fingerprint     String
+  plan_code               String
+  plan_version            String
+  terms_snapshot          Json
+  amount                  Decimal   @db.Decimal(18, 2)
+  currency                String
+  payer_email             String
+  status                  String    @default("PENDING_CHECKOUT")
+  provider_preapproval_id String?   @unique
+  checkout_url            String?
+  provider_status         String?
+  first_paid_at           DateTime?
+  next_payment_at         DateTime?
+  paid_through            DateTime?
+  pending_plan_code       String?
+  pending_plan_version    String?
+  pending_terms_snapshot  Json?
+  pending_amount          Decimal?  @db.Decimal(18, 2)
+  cancel_at               DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  client              Client                 @relation(fields: [client_id], references: [id], onDelete: Restrict)
+  periods             SaasBillingPeriod[]
+  events              SaasWebhookEvent[]
+  callback_deliveries SaasCallbackDelivery[]
+
+  @@unique([client_id, idempotency_key])
+  @@index([client_id, external_tenant_id])
+  @@index([status, next_payment_at])
+}
+
+model SaasBillingPeriod {
+  id                  String   @id @default(uuid())
+  subscription_id     String
+  provider_invoice_id String?  @unique
+  period_start        DateTime
+  period_end          DateTime
+  amount              Decimal  @db.Decimal(18, 2)
+  currency            String
+  status              String   @default("PENDING")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  subscription     SaasSubscription     @relation(fields: [subscription_id], references: [id], onDelete: Restrict)
+  payment_attempts SaasPaymentAttempt[]
+
+  @@unique([subscription_id, period_start])
+  @@index([subscription_id, period_end])
+}
+
+model SaasPaymentAttempt {
+  id                  String    @id @default(uuid())
+  period_id           String
+  provider_payment_id String?   @unique
+  provider_status     String
+  status_detail       String?
+  amount              Decimal   @db.Decimal(18, 2)
+  currency            String
+  paid_at             DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  period SaasBillingPeriod @relation(fields: [period_id], references: [id], onDelete: Restrict)
+
+  @@index([period_id, createdAt])
+}
+
+model SaasWebhookEvent {
+  id              String    @id @default(uuid())
+  request_id      String    @unique
+  client_id       String?
+  subscription_id String?
+  topic           String
+  resource_id     String
+  payload         Json
+  status          String    @default("RECEIVED")
+  attempts        Int       @default(0)
+  next_attempt_at DateTime  @default(now())
+  locked_until    DateTime?
+  last_error      String?
+  received_at     DateTime  @default(now())
+  processed_at    DateTime?
+
+  client       Client?           @relation(fields: [client_id], references: [id], onDelete: Restrict)
+  subscription SaasSubscription? @relation(fields: [subscription_id], references: [id], onDelete: Restrict)
+
+  @@index([status, next_attempt_at])
+  @@index([topic, resource_id])
+}
+
+model SaasCallbackDelivery {
+  id              String    @id @default(uuid())
+  event_key       String    @unique
+  client_id       String
+  subscription_id String
+  callback_url    String
+  payload         Json
+  signature       String
+  status          String    @default("PENDING")
+  attempts        Int       @default(0)
+  next_attempt_at DateTime  @default(now())
+  locked_until    DateTime?
+  last_error      String?
+  createdAt       DateTime  @default(now())
+  delivered_at    DateTime?
+
+  client       Client           @relation(fields: [client_id], references: [id], onDelete: Restrict)
+  subscription SaasSubscription @relation(fields: [subscription_id], references: [id], onDelete: Restrict)
+
+  @@index([status, next_attempt_at])
 }

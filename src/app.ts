@@ -8,6 +8,7 @@ import authRoutesV2 from './routes/v2/auth.routes';
 import pagosRoutesV2 from './routes/v2/pago.routes';
 import orderRoutesV2 from './routes/v2/orden.routes';
 import webhookRoutesV2 from './routes/v2/webhook.routes';
+import subscriptionRoutesV2 from './routes/v2/subscription.routes';
 
 export const app = express();
 
@@ -42,6 +43,7 @@ app.use('/v2/auth', authRoutesV2);
 app.use('/v2/pagos', pagosRoutesV2);
 app.use('/v2/ordenes', orderRoutesV2);
 app.use('/v2/webhook', webhookRoutesV2);
+app.use('/v2/subscriptions', subscriptionRoutesV2);
 
 app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
   if (res.headersSent) { next(error); return; }

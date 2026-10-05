@@ -17,6 +17,9 @@ Este directorio reúne la descripción funcional, técnica y operativa del motor
 | [Datos y migraciones](./datos-y-migraciones.md) | Modelos Prisma, restricciones, migración aditiva y carga de credenciales. |
 | [Seguridad y operación](./seguridad-y-operacion.md) | Configuración, ejecución, despliegue, secretos, workers y respuesta operativa. |
 | [Estado y pendientes](./estado-y-pendientes.md) | Qué está implementado, qué requiere preparación y prioridades para endurecer el sistema. |
+| [Plan de suscripciones SaaS](./plan-suscripciones-saas-fivepeaks.md) | Objetivo y fases para cobrar planes de apps integradas. |
+| [Prueba del calendario de suscripciones](./suscripciones-fase-0.md) | Ensayo de primer cobro y renovación el día 5. |
+| [Contrato propuesto de suscripciones](./suscripciones-contrato-api.md) | API y callbacks previstos para el módulo SaaS. |
 
 ## Estado documental
 

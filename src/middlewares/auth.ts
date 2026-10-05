@@ -12,7 +12,7 @@ export const verifyApiKey = async (req: Request, res: Response, next: NextFuncti
   try {
     let client = await prisma.client.findUnique({
       where: { api_key_hash: hashApiKey(apiKey) },
-      select: { id: true, client_id: true, callback_url: true, redirect_uri: true, webhook_secret: true, createdAt: true, updatedAt: true },
+      select: { id: true, client_id: true, callback_url: true, subscription_callback_url: true, redirect_uri: true, webhook_secret: true, createdAt: true, updatedAt: true },
     });
 
     // Supports a rolling deployment; migrate_credentials.ts clears plaintext keys before rollout completes.
@@ -26,7 +26,7 @@ export const verifyApiKey = async (req: Request, res: Response, next: NextFuncti
         if (migrated.count === 1) {
           client = await prisma.client.findUnique({
             where: { id: legacyClient.id },
-            select: { id: true, client_id: true, callback_url: true, redirect_uri: true, webhook_secret: true, createdAt: true, updatedAt: true },
+            select: { id: true, client_id: true, callback_url: true, subscription_callback_url: true, redirect_uri: true, webhook_secret: true, createdAt: true, updatedAt: true },
           });
         }
       }
